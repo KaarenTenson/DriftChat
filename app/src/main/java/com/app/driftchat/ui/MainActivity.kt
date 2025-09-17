@@ -1,4 +1,4 @@
-package com.app.driftchat
+package com.app.driftchat.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
