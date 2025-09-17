@@ -1,0 +1,11 @@
+1st Screen: The main part of the screen is the front camera view of your chat 
+buddy, on the upper right corner you can see your own front camera view. 
+On the bottom of the screen you can start chatting with your chat buddy trough text, 
+and you can also see some info about them on the top of the screen when opening text. 
+You can swipe right to start talking with the next chat buddy,
+or swipe left to open your profile configuration.
+
+2nd Screen: In this screen you have multiple options to set your preferences 
+and add some information bout yourself to better match with other chat buddies. 
+You can swipe right to start chatting with others.
+ 
