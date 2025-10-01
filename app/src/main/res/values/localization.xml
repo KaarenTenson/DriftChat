@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="swipe_left">Swipe left to go to your profile</string>
+    <string name="swipe_right">Swipe right to start chatting</string>
+    <string name="enter_desc">Enter Description</string>
+    <string name="enter_name">Enter Name</string>
+    <string name="search_hobbies">Search hobbies</string>
+    <string name="choose_hobbies">Choose your hobbies:</string>
+
+</resources>

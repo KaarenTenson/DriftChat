@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="hobbies_array">
+        <item>Reading</item>
+        <item>Cooking</item>
+        <item>Traveling</item>
+        <item>Photography</item>
+        <item>Gardening</item>
+        <item>Cycling</item>
+        <item>Hiking</item>
+        <item>Music</item>
+        <item>Painting</item>
+        <item>Swimming</item>
+        <item>Running</item>
+        <item>Writing</item>
+        <item>Fishing</item>
+        <item>Dancing</item>
+        <item>Yoga</item>
+        <item>Meditation</item>
+        <item>Camping</item>
+        <item>Knitting</item>
+        <item>Sewing</item>
+        <item>Woodworking</item>
+        <item>Cooking new recipes</item>
+        <item>Baking</item>
+        <item>Board games</item>
+        <item>Card games</item>
+        <item>Volunteering</item>
+        <item>Birdwatching</item>
+        <item>Collecting stamps</item>
+        <item>Collecting coins</item>
+        <item>Crafting</item>
+        <item>Scrapbooking</item>
+        <item>Blogging</item>
+        <item>Podcasting</item>
+        <item>Calligraphy</item>
+        <item>Origami</item>
+        <item>Chess</item>
+        <item>Puzzles</item>
+        <item>Video gaming</item>
+        <item>Martial arts</item>
+        <item>Surfing</item>
+        <item>Skiing</item>
+        <item>Snowboarding</item>
+        <item>Skating</item>
+        <item>Rollerblading</item>
+        <item>Weightlifting</item>
+        <item>Bodybuilding</item>
+        <item>Pilates</item>
+        <item>Climbing</item>
+        <item>Archery</item>
+        <item>Horseback riding</item>
+        <item>Scuba diving</item>
+        <item>Snorkeling</item>
+        <item>Rowing</item>
+        <item>Kayaking</item>
+        <item>Sailing</item>
+        <item>Camping</item>
+        <item>Geocaching</item>
+        <item>Metal detecting</item>
+        <item>Cooking international food</item>
+        <item>Learning languages</item>
+        <item>Acting</item>
+        <item>Singing</item>
+        <item>Playing guitar</item>
+        <item>Playing piano</item>
+        <item>Playing drums</item>
+        <item>DJing</item>
+        <item>Composing music</item>
+        <item>Film making</item>
+        <item>Video editing</item>
+        <item>Animation</item>
+        <item>3D modeling</item>
+        <item>Graphic design</item>
+        <item>Fashion design</item>
+        <item>Interior design</item>
+        <item>Makeup artistry</item>
+        <item>Hairstyling</item>
+        <item>Model building</item>
+        <item>Lego building</item>
+        <item>Pottery</item>
+        <item>Sculpting</item>
+        <item>Jewelry making</item>
+        <item>Glassblowing</item>
+        <item>Astrology</item>
+        <item>Astronomy</item>
+        <item>Science experiments</item>
+        <item>Robotics</item>
+        <item>Coding</item>
+        <item>Electronics</item>
+        <item>DIY home projects</item>
+        <item>Car restoration</item>
+        <item>Motorcycling</item>
+        <item>Drone flying</item>
+        <item>Kite flying</item>
+        <item>Travel vlogging</item>
+        <item>Urban exploration</item>
+        <item>Foraging</item>
+        <item>Wine tasting</item>
+        <item>Beer brewing</item>
+        <item>Tea tasting</item>
+        <item>Cooking with friends</item>
+        <item>Anime</item>
+        <item>Watching Movies</item>
+    </string-array>
+</resources>
