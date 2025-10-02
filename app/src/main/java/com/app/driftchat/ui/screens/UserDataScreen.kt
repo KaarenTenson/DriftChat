@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.app.driftchat.R
+import com.app.driftchat.domainmodel.Gender
 import com.app.driftchat.ui.components.HobbiesSelector
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 
@@ -39,6 +44,9 @@ fun UserDataScreen(viewModel: UserDataViewModel) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     val selectedHobbies = remember { mutableStateOf(setOf<String>()) }
+    val selectedGender = remember { mutableStateOf(Gender.MALE) }
+
+    var nameError = name.isEmpty()
 
     Scaffold(
         topBar = {
@@ -73,43 +81,82 @@ fun UserDataScreen(viewModel: UserDataViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-            Row (
-                modifier = Modifier.padding(8.dp),
-            ) {
-                TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.enter_name)) },
-                    maxLines = 2,
-                    textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .fillMaxWidth()
-                )
+                //for selecting name
+                Row (
+                    modifier = Modifier.padding(8.dp),
+                ) {
+                    TextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.enter_name)) },
+                        maxLines = 2,
+                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
+                        isError = nameError,
+                        trailingIcon = {
+                            if (nameError) Icon(Icons.Default.Warning, contentDescription = null)
+                        },
+                        supportingText = {
+                            if (nameError) Text(stringResource(R.string.name_error))
+                        },
 
-            }
-            Row (
-                modifier = Modifier.padding(8.dp),
-            ) {
-                HobbiesSelector(allHobbies = stringArrayResource(R.array.hobbies_array), selectedHobbies = selectedHobbies)
-            }
-            Row (
-                modifier = Modifier.padding(8.dp),
-            ) {
-                TextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text(stringResource(R.string.enter_desc)) },
-                    maxLines = 30,
-                    textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .padding(20.dp)
+                            .fillMaxWidth()
+                    )
+
+                }
+
+                //for choosing hobbies
+                Row (
+                    modifier = Modifier.padding(8.dp),
+                ) {
+                    HobbiesSelector(allHobbies = stringArrayResource(R.array.hobbies_array), selectedHobbies = selectedHobbies)
+                }
+                //for writing description
+                Row (
+                    modifier = Modifier.padding(8.dp),
+                ) {
+                    TextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text(stringResource(R.string.enter_desc)) },
+                        maxLines = 30,
+                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .padding(20.dp)
+                            .defaultMinSize(0.dp, 150.dp)
+                            .fillMaxWidth()
+                    )
+                }
+
+                //for choosing gender
+                Column(
                     modifier = Modifier
-                        .padding(20.dp)
-                        .defaultMinSize(0.dp, 150.dp)
+                        .padding(8.dp)
                         .fillMaxWidth()
-                )
+                ) {
+                    Text(stringResource(R.string.choose_gender))
+
+                    Row(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxWidth(),
+                    ) {
+                        for (gender: Gender in Gender.entries) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                            ) {
+                                Text(gender.name)
+                                Checkbox(
+                                    checked = selectedGender.value == gender,
+                                    onCheckedChange = { selectedGender.value = gender }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-
 }
