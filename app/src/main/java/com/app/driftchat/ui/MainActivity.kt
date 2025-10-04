@@ -21,16 +21,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            val vm: UserDataViewModel = viewModel()
-            DriftChatTheme {
-                Scaffold { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        UserDataScreen(viewModel = vm)
-                    }
-                }
 
-            }
+        setContent {
+            val viewModel: UserDataViewModel = viewModel()
+            AppNav(viewModel)
         }
     }
 }

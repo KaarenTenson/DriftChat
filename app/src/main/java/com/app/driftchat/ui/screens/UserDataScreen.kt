@@ -37,10 +37,12 @@ import com.app.driftchat.R
 import com.app.driftchat.domainmodel.Gender
 import com.app.driftchat.ui.components.HobbiesSelector
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDataScreen(viewModel: UserDataViewModel) {
+fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     val selectedHobbies = remember { mutableStateOf(setOf<String>()) }
@@ -77,7 +79,14 @@ fun UserDataScreen(viewModel: UserDataViewModel) {
         LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { _, dragAmount ->
+                        if (dragAmount > 50) {
+                            onSwipeRight()
+                        }
+                    }
+                },
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
