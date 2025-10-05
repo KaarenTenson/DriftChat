@@ -24,7 +24,7 @@ class UserDataViewModel(private val savedStateHandle: SavedStateHandle) : ViewMo
     fun loadUserData() :UserData {
         return UserData(
             name = "Madis",
-            hobbies = setOf(),
+            hobbies = setOf("Reading", "Traveling"),
             description = "Kaja Kallas on mu hear me out",
             gender = Gender.MALE)
     }

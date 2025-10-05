@@ -19,6 +19,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
@@ -72,6 +74,31 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
                 modifier = Modifier
                     .padding(horizontal = 32.dp),
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Hobbies:",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                userData.hobbies.forEach { hobby ->
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(hobby) },
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
+            }
 
 
         }
