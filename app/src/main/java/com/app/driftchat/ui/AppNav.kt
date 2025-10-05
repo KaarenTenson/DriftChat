@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.app.driftchat.ui.screens.ChatRoom
 import com.app.driftchat.ui.screens.UserAboutScreen
 import com.app.driftchat.ui.screens.UserDataScreen
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
@@ -19,7 +20,8 @@ fun AppNav(viewModel: UserDataViewModel) {
         composable(Screen.UserData.route) {
             UserDataScreen(
                 viewModel = viewModel,
-                onSwipeRight = { navController.navigate(Screen.UserAbout.route) }
+                onSwipeRight = { navController.navigate(Screen.UserAbout.route) },
+                onSwipeLeft = { navController.navigate(Screen.ChatRoom.route)}
             )
         }
 
@@ -29,5 +31,13 @@ fun AppNav(viewModel: UserDataViewModel) {
                 onSwipeLeft = { navController.navigate(Screen.UserData.route) }
             )
         }
+
+        composable(Screen.ChatRoom.route) {
+            ChatRoom(
+                onSwipeRight =  { navController.navigate(Screen.UserData.route) }
+            )
+        }
+
+
     }
 }

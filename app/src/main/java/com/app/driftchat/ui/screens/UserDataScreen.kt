@@ -39,16 +39,23 @@ import com.app.driftchat.ui.components.HobbiesSelector
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import com.app.driftchat.domainmodel.UserData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    val selectedHobbies = remember { mutableStateOf(setOf<String>()) }
-    val selectedGender = remember { mutableStateOf(Gender.MALE) }
+fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwipeLeft: () -> Unit) {
+    var name by remember { mutableStateOf(viewModel.data.value.name) }
+    var description by remember { mutableStateOf(viewModel.data.value.description) }
+    val selectedHobbies = remember { mutableStateOf(viewModel.data.value.hobbies) }
+    val selectedGender = remember { mutableStateOf(viewModel.data.value.gender) }
 
-    var nameError = name.isEmpty()
+    if (name == null) {
+        name = ""
+    }
+    if (description == null) {
+        description = ""
+    }
+    var nameError = name!!.isEmpty()
 
     Scaffold(
         topBar = {
@@ -82,8 +89,12 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit) {
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures { _, dragAmount ->
+                        viewModel.updateUserData(UserData(name = name, hobbies = selectedHobbies.value, description = description, gender = selectedGender.value))
                         if (dragAmount > 50) {
                             onSwipeRight()
+                        }
+                        if (dragAmount < -50) {
+                            onSwipeLeft()
                         }
                     }
                 },
@@ -95,7 +106,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit) {
                     modifier = Modifier.padding(8.dp),
                 ) {
                     TextField(
-                        value = name,
+                        value = name!!,
                         onValueChange = { name = it },
                         label = { Text(stringResource(R.string.enter_name)) },
                         maxLines = 2,
@@ -126,7 +137,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit) {
                     modifier = Modifier.padding(8.dp),
                 ) {
                     TextField(
-                        value = description,
+                        value = description!!,
                         onValueChange = { description = it },
                         label = { Text(stringResource(R.string.enter_desc)) },
                         maxLines = 30,
