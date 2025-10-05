@@ -31,11 +31,16 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
                 .padding(padding)
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectHorizontalDragGestures { _, dragAmount ->
-                        if (dragAmount < -50) {
-                            onSwipeLeft()
+                    var totalDrag = 0f
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { _, dragAmount ->
+                            totalDrag += dragAmount
+                        },
+                        onDragEnd = {
+                            if (totalDrag < -50) onSwipeLeft()
+                            totalDrag = 0f
                         }
-                    }
+                    )
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -53,7 +58,7 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
 
             //name
             Text(
-                text = "Madis",
+                text = userData.name ?: "Unknown User",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -62,7 +67,7 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
 
             //desc
             Text(
-                text = "Kaja Kallas on mu hear me out",
+                text = userData.description ?: "Unknown Desc",
                 fontSize = 18.sp,
                 modifier = Modifier
                     .padding(horizontal = 32.dp),

@@ -26,7 +26,7 @@ fun AppNav(viewModel: UserDataViewModel) {
         composable(Screen.UserAbout.route) {
             UserAboutScreen(
                 viewModel = viewModel,
-                onSwipeLeft = { navController.popBackStack() }
+                onSwipeLeft = { navController.navigate(Screen.UserData.route) }
             )
         }
     }
