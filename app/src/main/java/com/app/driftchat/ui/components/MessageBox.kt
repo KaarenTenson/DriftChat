@@ -21,15 +21,15 @@ import androidx.compose.ui.unit.dp
 fun MessageBox(
     onSendMessage: (String) -> Unit) {
         var message by remember { mutableStateOf("") }
-        val maxCharacters = 100 // Text field max characters
+        val maxCharacters = 100 // text field max characters
 
         OutlinedTextField(
             value = message,
             onValueChange = { newText ->
-                if (newText.contains("\n")) {
-                    onSendMessage(message)
-                    message = ""
-                } else if (newText.length <= maxCharacters) {
+                if (newText.contains("\n")) { // If enter is pressed
+                    onSendMessage(message) // sends message to viewmodel
+                    message = "" // clears message
+                } else if (newText.length <= maxCharacters) { // updates message if not too long
                     message = newText
                 }
             },
