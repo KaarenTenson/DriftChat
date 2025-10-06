@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 fun MessageBox(
     onSendMessage: (String) -> Unit) {
         var message by remember { mutableStateOf("") }
-        val maxCharacters = 100 // text field max characters
+        val maxCharacters = 38 // text field max characters
 
         OutlinedTextField(
             value = message,
@@ -33,8 +33,8 @@ fun MessageBox(
                     message = newText
                 }
             },
-            placeholder = { Text("Send message...") },
             textStyle = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+            placeholder = { Text("Send message...", fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace) },
             maxLines = 2,
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
