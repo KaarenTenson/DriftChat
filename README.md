@@ -1,4 +1,4 @@
-Team DriftChat: Ander Saarniit, Kaaren Tenson, Tristan Laur, Raivo Rander.
+Team DriftChat: Ander Saarniit, Kaaren Tenson, Tristan Laur, Raivo Rander, Tristan Tõruke.
 
 We will make an app, where you can chat with other people live over facetime like features. When opening the app it will show you your profile, where you can: choose your screen name, hobby,
 tell more about youself, put an age range, choose what gender people you want to talk to, choose the language you want to talk in and finally answer some fun questions about yourself. 
