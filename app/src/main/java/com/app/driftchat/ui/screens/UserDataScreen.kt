@@ -1,5 +1,6 @@
 package com.app.driftchat.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,9 @@ import com.app.driftchat.ui.components.HobbiesSelector
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +107,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
             item {
                 //for selecting name
                 Row (
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 5.dp),
                 ) {
                     TextField(
                         value = name!!,
@@ -120,7 +124,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                         },
 
                         modifier = Modifier
-                            .padding(20.dp)
+                            .padding(8.dp)
                             .fillMaxWidth()
                     )
 
@@ -128,13 +132,17 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
 
                 //for choosing hobbies
                 Row (
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(start = 13.dp,end = 13.dp)
+                        .background(
+                            color = Color(0xFFE6E0E9),
+                            shape = RectangleShape
+                        )
                 ) {
                     HobbiesSelector(allHobbies = stringArrayResource(R.array.hobbies_array), selectedHobbies = selectedHobbies)
                 }
                 //for writing description
                 Row (
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(5.dp),
                 ) {
                     TextField(
                         value = description!!,
@@ -143,34 +151,44 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                         maxLines = 30,
                         textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
                         modifier = Modifier
-                            .padding(20.dp)
+                            .padding(8.dp)
                             .defaultMinSize(0.dp, 150.dp)
-                            .fillMaxWidth()
+                            .fillMaxWidth(),
                     )
                 }
 
                 //for choosing gender
                 Column(
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(12.dp)
                         .fillMaxWidth()
+                        .background(
+                            color = Color(0xFFE6E0E9),
+                            shape = RectangleShape
+                        )
+                        .padding(8.dp),
+
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Text(stringResource(R.string.choose_gender))
 
                     Row(
                         modifier = Modifier
                             .padding(8.dp)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
                     ) {
                         for (gender: Gender in Gender.entries) {
                             Column(
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+
                                 Text(gender.name)
                                 Checkbox(
                                     checked = selectedGender.value == gender,
                                     onCheckedChange = { selectedGender.value = gender }
+
                                 )
                             }
                         }

@@ -65,7 +65,9 @@ fun HobbiesSelector(
         LazyColumn(userScrollEnabled = true,
             modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)) {
+            .height(200.dp)
+            .border(width = 1.dp,color = Color.Gray,RoundedCornerShape(5.dp))
+            .padding(start = 4.dp)) {
                 items(filteredHobbies) { hobby ->
                     val checked = hobby in selectedHobbies.value
 
@@ -89,7 +91,7 @@ fun HobbiesSelector(
                         },
 
                         ) {
-                            Text(hobby, modifier = Modifier.padding(start = 8.dp))
+                            Text(hobby, modifier = Modifier.padding(start = 3.dp, end = 3.dp))
                         }
 
                     }
@@ -100,6 +102,7 @@ fun HobbiesSelector(
         if (selectedHobbies.value.isNotEmpty()) {
             Box(
                 modifier = Modifier
+                    .padding(top = 8.dp)
                     .fillMaxWidth()
                     .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                     .padding(8.dp)
