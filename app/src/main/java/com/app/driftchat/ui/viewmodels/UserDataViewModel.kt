@@ -1,32 +1,41 @@
 package com.app.driftchat.ui.viewmodels
 
-import androidx.lifecycle.SavedStateHandle
+import UserDataRepository
 import androidx.lifecycle.ViewModel
-import com.app.driftchat.domainmodel.Gender
+import androidx.lifecycle.viewModelScope
 import com.app.driftchat.domainmodel.UserData
-
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@HiltViewModel
+class UserDataViewModel @Inject constructor(
+    private val userDataRepository: UserDataRepository
+) : ViewModel() {
 
-class UserDataViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
-
-    private companion object { const val KEY_VIEW = "view_mode" }
-
-    private val _data = MutableStateFlow<UserData>(loadUserData())
+    private val _data = MutableStateFlow<UserData?>(null)
     val data = _data.asStateFlow()
 
+    init {
+        loadInitialUser(1)
+    }
 
+    private fun loadInitialUser(userId: Int) {
+        viewModelScope.launch {
+            userDataRepository.getUserById(userId).collect { userFromDb ->
+                _data.value = userFromDb
+            }
+        }
+    }
 
+    /**
+     * Updates the user data in both the UI state and the database.
+     */
     fun updateUserData(updated: UserData) {
-        _data.value = updated
+        viewModelScope.launch {
+            userDataRepository.insertUser(updated)
+        }
     }
-    fun loadUserData() :UserData {
-        return UserData(
-            name = "Madis",
-            hobbies = setOf("Reading", "Traveling"),
-            description = "I like animals and long walks on the beach",
-            gender = Gender.MALE)
-    }
-
 }
