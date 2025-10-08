@@ -34,6 +34,7 @@ class UserDataViewModel @Inject constructor(
      * Updates the user data in both the UI state and the database.
      */
     fun updateUserData(updated: UserData) {
+        updated.id = 1
         viewModelScope.launch {
             userDataRepository.insertUser(updated)
         }

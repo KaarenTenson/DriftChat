@@ -64,7 +64,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
     if (description == null) {
         description = ""
     }
-    var nameError = name!!.isEmpty()
+    val nameError = name.isEmpty()
 
     Scaffold(
         topBar = {
