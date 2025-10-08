@@ -41,6 +41,7 @@ import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
@@ -48,10 +49,14 @@ import com.app.driftchat.domainmodel.UserData
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwipeLeft: () -> Unit) {
-    var name by remember { mutableStateOf(viewModel.data.value.name) }
-    var description by remember { mutableStateOf(viewModel.data.value.description) }
-    val selectedHobbies = remember { mutableStateOf(viewModel.data.value.hobbies) }
-    val selectedGender = remember { mutableStateOf(viewModel.data.value.gender) }
+    // Collect the state once at the top
+    val userData by viewModel.data.collectAsState()
+
+// Use the collected state to initialize your 'remember' blocks, providing default values
+    var name by remember(userData) { mutableStateOf(userData?.name ?: "") }
+    var description by remember(userData) { mutableStateOf(userData?.description ?: "") }
+    val selectedHobbies = remember(userData) { mutableStateOf(userData?.hobbies ?: emptySet()) }
+    val selectedGender = remember(userData) { mutableStateOf(userData?.gender ?: Gender.MALE) } // Default to MALE or another sensible default
 
     if (name == null) {
         name = ""

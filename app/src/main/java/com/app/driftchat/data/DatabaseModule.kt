@@ -1,3 +1,5 @@
+package com.app.driftchat.data
+
 import android.content.Context
 import com.app.driftchat.data.AppDatabase
 import com.app.driftchat.data.UserDataDao

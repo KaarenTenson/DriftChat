@@ -1,3 +1,5 @@
+package com.app.driftchat.data
+
 import com.app.driftchat.data.UserDataDao
 import com.app.driftchat.domainmodel.UserData
 import kotlinx.coroutines.flow.Flow

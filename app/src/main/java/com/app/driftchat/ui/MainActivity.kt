@@ -16,7 +16,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.driftchat.ui.screens.UserDataScreen
 import com.app.driftchat.ui.theme.DriftChatTheme
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

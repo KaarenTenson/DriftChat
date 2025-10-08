@@ -1,8 +1,8 @@
 package com.app.driftchat.ui.viewmodels
 
-import UserDataRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.driftchat.data.UserDataRepository
 import com.app.driftchat.domainmodel.UserData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -60,7 +60,7 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
 
             //name
             Text(
-                text = userData.name ?: "Unknown User",
+                text = userData?.name ?: "Unknown User",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -69,7 +69,7 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
 
             //desc
             Text(
-                text = userData.description ?: "Unknown Desc",
+                text = userData?.description ?: "Unknown Desc",
                 fontSize = 18.sp,
                 modifier = Modifier
                     .padding(horizontal = 32.dp),
@@ -91,13 +91,17 @@ fun UserAboutScreen(viewModel: UserDataViewModel,onSwipeLeft: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                userData.hobbies.forEach { hobby ->
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(hobby) },
-                        shape = MaterialTheme.shapes.medium
-                    )
+                // Use a safe call to execute this loop only if hobbies is not null
+                userData?.hobbies?.let { hobbies ->
+                    hobbies.forEach { hobby ->
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(hobby) },
+                            shape = MaterialTheme.shapes.medium
+                        )
+                    }
                 }
+
             }
 
 
