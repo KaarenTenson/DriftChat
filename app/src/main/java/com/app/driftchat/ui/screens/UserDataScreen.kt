@@ -1,7 +1,7 @@
 package com.app.driftchat.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -40,9 +40,14 @@ import com.app.driftchat.ui.components.HobbiesSelector
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
 
@@ -58,6 +63,9 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
     val selectedHobbies = remember(userData) { mutableStateOf(userData?.hobbies ?: emptySet()) }
     val selectedGender = remember(userData) { mutableStateOf(userData?.gender ?: Gender.MALE) } // Default to MALE or another sensible default
 
+    val maxNameLength = 40
+    val maxDescriptionLength = 500
+
     if (name == null) {
         name = ""
     }
@@ -65,6 +73,17 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
         description = ""
     }
     val nameError = name.isEmpty()
+
+    // If name is missing, border red and show error message
+    var borderColor = Color.Black
+    var errorMessage = ""
+    if (nameError) {
+        borderColor = Color.Red
+        errorMessage = "Required"
+    } else {
+        borderColor = Color.Black
+        errorMessage = ""
+    }
 
     Scaffold(
         topBar = {
@@ -98,7 +117,14 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures { _, dragAmount ->
-                        viewModel.updateUserData(UserData(name = name, hobbies = selectedHobbies.value, description = description, gender = selectedGender.value))
+                        viewModel.updateUserData(
+                            UserData(
+                                name = name,
+                                hobbies = selectedHobbies.value,
+                                description = description,
+                                gender = selectedGender.value
+                            )
+                        )
                         if (dragAmount > 50) {
                             onSwipeRight()
                         }
@@ -110,76 +136,157 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                //for selecting name
+                // name field title row
                 Row (
-                    modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 5.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, top = 50.dp, bottom = 15.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "What do you want to be called?",
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    )
+                }
+                // for selecting name
+                Row (
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 10.dp),
                 ) {
                     TextField(
                         value = name!!,
-                        onValueChange = { name = it },
-                        label = { Text(stringResource(R.string.enter_name)) },
-                        maxLines = 2,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
+                        onValueChange = {
+                            if (it.length <= maxNameLength) {
+                                name = it
+                            }
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Enter name",
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        },
+                        textStyle = TextStyle(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            textAlign = TextAlign.Center,
+                        ),
                         isError = nameError,
-                        trailingIcon = {
-                            if (nameError) Icon(Icons.Default.Warning, contentDescription = null)
-                        },
-                        supportingText = {
-                            if (nameError) Text(stringResource(R.string.name_error))
-                        },
+                        // These can be used in the future
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            errorContainerColor = Color.Transparent,
+                        ),
 
                         modifier = Modifier
-                            .padding(8.dp)
+                            .clip(RoundedCornerShape(50.dp))
+                            .border(2.dp, borderColor, RoundedCornerShape(50.dp))
                             .fillMaxWidth()
+                            .shadow(480.dp, RoundedCornerShape(50.dp))
                     )
-
+                }
+                // for displaying error message if missing name
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, bottom = 50.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = errorMessage,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        color = Color.Red
+                    )
                 }
 
                 //for choosing hobbies
                 Row (
-                    modifier = Modifier.padding(start = 13.dp,end = 13.dp)
-                        .background(
-                            color = Color(0xFFE6E0E9),
-                            shape = RectangleShape
-                        )
+                    modifier = Modifier
+                        .padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp)
                 ) {
                     HobbiesSelector(allHobbies = stringArrayResource(R.array.hobbies_array), selectedHobbies = selectedHobbies)
                 }
-                //for writing description
+
+                // description box title
                 Row (
-                    modifier = Modifier.padding(5.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, top= 10.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Write something about yourself",
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    )
+                }
+                // for writing description
+                Row (
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp),
                 ) {
                     TextField(
                         value = description!!,
-                        onValueChange = { description = it },
-                        label = { Text(stringResource(R.string.enter_desc)) },
-                        maxLines = 30,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold),
+                        onValueChange = {
+                            if (it.length <= maxDescriptionLength) {
+                                description = it
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                        ),
+                        maxLines = 20,
+                        textStyle = TextStyle(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = Color.Black),
                         modifier = Modifier
-                            .padding(8.dp)
+                            .padding(start = 10.dp, end = 10.dp)
                             .defaultMinSize(0.dp, 150.dp)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(30.dp))
+                            .border(2.dp, Color.Black, RoundedCornerShape(30.dp))
+                            .shadow(480.dp, RoundedCornerShape(30.dp)),
+                    )
+                }
+
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 15.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Choose your gender:",
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
                     )
                 }
 
                 //for choosing gender
                 Column(
                     modifier = Modifier
-                        .padding(12.dp)
+                        .padding(start = 10.dp, end = 10.dp)
                         .fillMaxWidth()
-                        .background(
-                            color = Color(0xFFE6E0E9),
-                            shape = RectangleShape
-                        )
                         .padding(8.dp),
 
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text(stringResource(R.string.choose_gender))
-
                     Row(
                         modifier = Modifier
-                            .padding(8.dp)
                             .fillMaxWidth()
                     ) {
                         for (gender: Gender in Gender.entries) {
@@ -189,8 +296,14 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
 
-                                Text(gender.name)
+                                Text(
+                                    text = gender.name,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,)
                                 Checkbox(
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = Color.Black,
+                                        uncheckedColor = MaterialTheme.colorScheme.primary,
+                                    ),
                                     checked = selectedGender.value == gender,
                                     onCheckedChange = { selectedGender.value = gender }
 

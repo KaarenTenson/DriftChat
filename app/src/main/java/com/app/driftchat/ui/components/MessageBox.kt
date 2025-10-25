@@ -35,7 +35,6 @@ fun MessageBox(
             },
             textStyle = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
             placeholder = { Text("Send message...", fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace) },
-            maxLines = 2,
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
                 .border(2.dp, Color.Black, RoundedCornerShape(50.dp))
