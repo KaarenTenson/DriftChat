@@ -34,6 +34,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     private var chatRoomListenerRegistration: ListenerRegistration? = null
     private var messageListenerRegistration: ListenerRegistration? = null
 
+    private var leftChatListenerRegistration: ListenerRegistration? = null
 
 
     init {
@@ -41,6 +42,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messages.add("")
         messages.add("Welcome to the chat!")
     }
+
 
     fun startMessageListener() {
         val currentRoomID = roomID
@@ -80,7 +82,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 }
             }
     }
-    fun startChatRoomListener() {
+    fun startChatRoomListener(userData: UserData? = null) {
         val searchID = userID
 
         if (searchID.isNullOrBlank()) { //Selleks et String? lahti saada
@@ -104,6 +106,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                         errorMsg.value = ""
                         roomID = document.id
                         startMessageListener()
+                        startLeftChatListener(userData)
                         val members = document.get("members") as? List<*>
                         Log.d(TAG, "Found chat room: ${document.id}")
                         Log.d(TAG, "Room ${document.id} members: $members")
@@ -114,6 +117,47 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 }
             }
     }
+
+    fun startLeftChatListener(userData: UserData?) {
+        val currentRoomID = roomID
+
+        if (currentRoomID.isNullOrBlank()) {
+            Log.w(TAG, "Cannot start LeftChat listener: Room ID missing.")
+            return
+        }
+
+
+        leftChatListenerRegistration?.remove()
+
+        leftChatListenerRegistration = db.collection("Leftchat")
+            .whereEqualTo("roomID", currentRoomID)
+            .addSnapshotListener { snapshots, error ->
+                if (error != null) {
+                    Log.e(TAG, "LeftChat listener failed: ${error.message}", error)
+                    errorMsg.value = "Failed to listen for left chat updates"
+                    return@addSnapshotListener
+                }
+
+                if (snapshots != null && !snapshots.isEmpty) {
+
+                    Log.d(TAG, "🚪 Detected room $currentRoomID in Leftchat — the other user left.")
+                    errorMsg.value = "The other person left the chat."
+                    setIsWaiting(false)
+
+
+                    messageListenerRegistration?.remove()
+                    cleanMessages()
+
+
+                    Log.d(TAG, "Re-adding current user to waitlist after other user left.")
+                    addUserToWaitList(userData)
+
+
+                    leftChatListenerRegistration?.remove()
+                }
+            }
+    }
+
     fun addUserToWaitList(userData: UserData?) {
         val now = System.currentTimeMillis()
         setIsWaiting(true)
@@ -133,6 +177,26 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             .add(waitListEntry)
             .addOnSuccessListener { documentReference ->
                 Log.d(TAG, "User added to waitList with ID: ${documentReference.id}")
+                userID=documentReference.id
+                startChatRoomListener()
+            }
+            .addOnFailureListener { e ->
+                setIsWaiting(false)
+                errorMsg.value = "failed to connect to the server"
+                Log.w(TAG, "Error adding to waitList", e)
+            }
+
+    }
+    fun addUserToLeftChat(userData: UserData?) {
+        val leftChatEntry = hashMapOf<String, Any>(
+            "roomID" to (roomID ?: 0)
+
+        )
+
+        db.collection("Leftchat")
+            .add(leftChatEntry)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Room added to waitList with ID: ${documentReference.id}")
                 userID=documentReference.id
                 startChatRoomListener()
             }
@@ -182,5 +246,6 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         super.onCleared()
         chatRoomListenerRegistration?.remove()
         messageListenerRegistration?.remove()
+        leftChatListenerRegistration?.remove()
     }
 }

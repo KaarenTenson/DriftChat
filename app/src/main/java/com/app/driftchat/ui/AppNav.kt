@@ -38,7 +38,9 @@ fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel, quoteView
             ChatRoom(
                 userViewModel = viewModel,
                 chatViewModel = chatViewModel,
-                onSwipeRight =  { navController.navigate(Screen.UserData.route) }
+                onSwipeRight =  {
+                    chatViewModel.addUserToLeftChat(viewModel.data.value)
+                    navController.navigate(Screen.UserData.route) }
             )
         }
 
