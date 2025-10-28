@@ -22,7 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.driftchat.ui.viewmodels.QuoteViewModel
 
 @Composable
-fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel = viewModel()) {
+fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier

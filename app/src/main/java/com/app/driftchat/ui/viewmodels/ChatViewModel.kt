@@ -63,13 +63,19 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                if (snapshots != null && !snapshots.isEmpty) {
-                    for (document in snapshots.documents) {
-                        val msgText = document.getString("Message")
-                        val senderName = document.getString("name")
-                        Log.d(TAG, "Recieved message ${document.id}")
-                        messages.add("$senderName: $msgText")
-
+                if (snapshots != null) {
+                    for (change in snapshots.documentChanges) {
+                        when (change.type) {
+                            com.google.firebase.firestore.DocumentChange.Type.ADDED -> {
+                                val document = change.document
+                                val msgText = document.getString("Message")
+                                val senderName = document.getString("name")
+                                Log.d(TAG, "📩 New message received: ${document.id}")
+                                messages.add("$senderName: $msgText")
+                            }
+                            // ignore MODIFIED and REMOVED changes
+                            else -> {}
+                        }
                     }
                 }
             }

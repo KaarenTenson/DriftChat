@@ -51,15 +51,25 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
 import com.app.driftchat.ui.components.RandomQuoteGetter
+import com.app.driftchat.ui.viewmodels.QuoteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDataScreen(
     viewModel: UserDataViewModel,
+    quoteViewModel: QuoteViewModel,
     onSwipeRight: () -> Unit,
     onSwipeLeft: () -> Unit) {
     // Collect the state once at the top
     val userData by viewModel.data.collectAsState()
+
+    if (userData != null &&
+        userData!!.quote != null &&
+        !userData!!.quote!!.isEmpty() &&
+        quoteViewModel.quote.isEmpty()) {
+
+        quoteViewModel.quote = userData!!.quote!!
+    }
 
 // Use the collected state to initialize your 'remember' blocks, providing default values
     var name by remember(userData) { mutableStateOf(userData?.name ?: "") }
@@ -127,7 +137,7 @@ fun UserDataScreen(
                                 hobbies = selectedHobbies.value,
                                 description = description,
                                 gender = selectedGender.value,
-                                //quote =
+                                quote = quoteViewModel.quote,
                             )
                         )
                         if (dragAmount > 50) {
@@ -240,7 +250,7 @@ fun UserDataScreen(
                 Row (
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp),
                 ) {
-                    RandomQuoteGetter()
+                    RandomQuoteGetter(quoteViewModel)
                 }
 
                 // description box title

@@ -9,7 +9,7 @@ import com.app.driftchat.data.UserDataDao
 import androidx.room.TypeConverters
 import com.app.driftchat.domainmodel.UserData
 
-@Database(entities = [UserData::class], version = 1, exportSchema = false)
+@Database(entities = [UserData::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 

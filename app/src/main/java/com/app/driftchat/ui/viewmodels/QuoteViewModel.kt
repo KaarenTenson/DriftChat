@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 class QuoteViewModel : ViewModel() {
     var quote by mutableStateOf("")
-        private set
+        public set
 
     var isLoading by mutableStateOf(false)
         private set

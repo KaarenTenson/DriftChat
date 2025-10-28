@@ -9,11 +9,11 @@ import com.app.driftchat.ui.screens.UserAboutScreen
 import com.app.driftchat.ui.screens.UserDataScreen
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import com.app.driftchat.ui.viewmodels.ChatViewModel
+import com.app.driftchat.ui.viewmodels.QuoteViewModel
 
 @Composable
-fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel) {
+fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel, quoteViewModel: QuoteViewModel) {
     val navController = rememberNavController()
-
     NavHost(
         navController = navController,
         startDestination = Screen.UserData.route
@@ -21,6 +21,7 @@ fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel) {
         composable(Screen.UserData.route) {
             UserDataScreen(
                 viewModel = viewModel,
+                quoteViewModel = quoteViewModel,
                 onSwipeRight = { navController.navigate(Screen.UserAbout.route) },
                 onSwipeLeft = { navController.navigate(Screen.ChatRoom.route)}
             )
