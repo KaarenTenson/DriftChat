@@ -39,8 +39,15 @@ fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel, quoteView
                 userViewModel = viewModel,
                 chatViewModel = chatViewModel,
                 onSwipeRight =  {
-                    chatViewModel.addUserToLeftChat(viewModel.data.value)
-                    navController.navigate(Screen.UserData.route) }
+                    if (chatViewModel.isWaitingForOtherPerson.value) {
+                        chatViewModel.removeUserFromWaitList()
+                    } else {
+                        chatViewModel.addUserToLeftChat(viewModel.data.value)
+                    }
+                    navController.navigate(Screen.UserData.route)
+                }
+//                    chatViewModel.addUserToLeftChat(viewModel.data.value)
+//                    navController.navigate(Screen.UserData.route) }
             )
         }
 

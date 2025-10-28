@@ -31,6 +31,9 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     private var userID: String? = null
     private var roomID: String? = null
     private var timeSinceLast = 0L
+
+    private var lastLeftChatCall = 0L
+    var timeSinceLastRemoval: Long = 0L
     private var chatRoomListenerRegistration: ListenerRegistration? = null
     private var messageListenerRegistration: ListenerRegistration? = null
 
@@ -120,7 +123,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
     fun startLeftChatListener(userData: UserData?) {
         val currentRoomID = roomID
-
+        val currentUserID = userID
         if (currentRoomID.isNullOrBlank()) {
             Log.w(TAG, "Cannot start LeftChat listener: Room ID missing.")
             return
@@ -139,21 +142,25 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 }
 
                 if (snapshots != null && !snapshots.isEmpty) {
+                    for (doc in snapshots.documents) {
+                        val leftBy = doc.get("leftBy")?.toString() ?: ""
+                        val currentUserDataId = userID.toString()
+                        if (leftBy.isNotBlank() && leftBy == currentUserDataId) {
+                            Log.d(TAG, "Ignoring Leftchat event — triggered by current user ($leftBy).")
+                            return@addSnapshotListener
+                        }
 
-                    Log.d(TAG, "🚪 Detected room $currentRoomID in Leftchat — the other user left.")
-                    errorMsg.value = "The other person left the chat."
-                    setIsWaiting(false)
+                        Log.d(TAG, "Other user left the chat ($leftBy), re-adding current user to waitlist.")
+                        errorMsg.value = "The other person left the chat."
+                        setIsWaiting(false)
 
+                        messageListenerRegistration?.remove()
+                        cleanMessages()
+                        addUserToWaitList(userData)
 
-                    messageListenerRegistration?.remove()
-                    cleanMessages()
-
-
-                    Log.d(TAG, "Re-adding current user to waitlist after other user left.")
-                    addUserToWaitList(userData)
-
-
-                    leftChatListenerRegistration?.remove()
+                        leftChatListenerRegistration?.remove()
+                        break
+                    }
                 }
             }
     }
@@ -169,16 +176,16 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         timeSinceLast = now
 
         val waitListEntry = hashMapOf<String, Any>(
-            "userId" to (userData?.id ?: 0),
+            "userId" to (userData?.id ?: ""),
             "createdAt" to (System.currentTimeMillis())
         )
 
         db.collection("waitList")
             .add(waitListEntry)
             .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "User added to waitList with ID: ${documentReference.id}")
                 userID=documentReference.id
-                startChatRoomListener()
+                Log.d(TAG, "User added to waitList with ID: ${documentReference.id}")
+                startChatRoomListener(userData)
             }
             .addOnFailureListener { e ->
                 setIsWaiting(false)
@@ -186,27 +193,65 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 Log.w(TAG, "Error adding to waitList", e)
             }
 
+    }
+
+    fun removeUserFromWaitList() {
+        val currentUserDocId = userID ?: return
+        val now = System.currentTimeMillis()
+        if (now - timeSinceLastRemoval < 2000) {
+            Log.d(TAG, "WaitList removal skipped. Already removing...")
+            return
+        }
+        db.collection("waitList")
+            .document(currentUserDocId)
+            .delete()
+            .addOnSuccessListener {
+                Log.d(TAG, "Removed from waitList: $currentUserDocId")
+                userID = null
+                setIsWaiting(false)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to remove waitList entry", e)
+            }
     }
     fun addUserToLeftChat(userData: UserData?) {
-        val leftChatEntry = hashMapOf<String, Any>(
-            "roomID" to (roomID ?: 0)
+        val currentRoomID = roomID
+        val currentUserID = userID
+        if (currentRoomID.isNullOrBlank() || isWaitingForOtherPerson.value) {
+            Log.w(TAG, "Cannot add to Leftchat — roomID is null'/blank or user is not in chat'.")
+            return
+        }
 
+        val now = System.currentTimeMillis()
+
+        if (now - lastLeftChatCall < 2000) {
+            Log.d(TAG, "Skipping duplicate Leftchat addition.")
+            return
+        }
+        lastLeftChatCall = now
+
+        val leftChatEntry = hashMapOf<String, Any>(
+            "roomID" to currentRoomID,
+            "leftBy" to (userID.toString()),
+            "timestamp" to now
         )
 
+
         db.collection("Leftchat")
-            .add(leftChatEntry)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "Room added to waitList with ID: ${documentReference.id}")
-                userID=documentReference.id
-                startChatRoomListener()
+            .document(currentRoomID)
+            .set(leftChatEntry)
+            .addOnSuccessListener {
+                Log.d(TAG, "Leftchat entry created for room: $currentRoomID")
             }
             .addOnFailureListener { e ->
                 setIsWaiting(false)
-                errorMsg.value = "failed to connect to the server"
-                Log.w(TAG, "Error adding to waitList", e)
+                errorMsg.value = "Failed to connect to the server"
+                Log.w(TAG, "Error adding to Leftchat", e)
             }
 
     }
+
+
 
     fun sendMessage(message: String, userData: UserData?) {      //Kui message tyhi pole motet database lisada
         if (message.isNotBlank()) {
