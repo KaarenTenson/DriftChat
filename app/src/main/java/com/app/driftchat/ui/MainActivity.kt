@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.driftchat.ui.viewmodels.ChatViewModel
+import com.app.driftchat.ui.viewmodels.QuoteViewModel
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import com.app.driftchat.utils.NetworkMonitor
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val userViewModel: UserDataViewModel = viewModel()
             val chatViewModel: ChatViewModel = hiltViewModel()
+            val quoteViewModel: QuoteViewModel = hiltViewModel()
+
 
             // ✅ Observe real-time network state
             val isConnected by NetworkMonitor.isConnected.collectAsState()
@@ -34,7 +37,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "No internet connection!", Toast.LENGTH_LONG).show()
             }
 
-            AppNav(userViewModel, chatViewModel)
+            AppNav(userViewModel, chatViewModel, quoteViewModel)
         }
     }
 
