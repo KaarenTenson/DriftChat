@@ -13,8 +13,8 @@ data class UserData(
     @PrimaryKey(autoGenerate = true)
     var id: Int = 0,
     var name: String?,
+    var quote: String?,
     var hobbies: Set<String>,
     var description: String?,
     var gender: Gender?,
-    //var quote: Quote?
 )
