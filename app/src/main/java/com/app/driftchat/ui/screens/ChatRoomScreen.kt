@@ -21,16 +21,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.driftchat.ui.components.MatchCam
 import com.app.driftchat.ui.components.MessageBox
 import com.app.driftchat.ui.components.UserCam
 import com.app.driftchat.ui.viewmodels.ChatViewModel
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewModel: UserDataViewModel) {
@@ -38,8 +34,12 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
     val userData = userViewModel.data.collectAsState().value
 
     LaunchedEffect(userData?.id) {
+        chatViewModel.cleanMessages()
         chatViewModel.addUserToWaitList(userData)
     }
+
+
+
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -50,6 +50,13 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 }
             }
         },) {
+        if (!chatViewModel.errorMsg.value.isEmpty()) {
+            ErrorBox(chatViewModel.errorMsg.value)
+        } else {
+            if (chatViewModel.isWaitingForOtherPerson.value) {
+                LoadingBox();
+            }
+        }
 
         // cameras
         MatchCam()
@@ -105,5 +112,50 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 onSendMessage = { Text -> chatViewModel.sendMessage(Text,userData) },
             )
         }
+    }
+}
+
+
+
+@Composable
+fun ErrorBox(errorMessage: String) {
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = 0.85f },
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.material3.Surface(
+            tonalElevation = 6.dp,
+            shadowElevation = 12.dp,
+            modifier = Modifier.padding(40.dp)
+        ) {
+            Box(
+                modifier = Modifier.padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = errorMessage)
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingBox() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp)
+            .graphicsLayer { alpha = 0.9f },
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.material3.CircularProgressIndicator()
+        Text(
+            text = "Connecting...",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp)
+        )
     }
 }

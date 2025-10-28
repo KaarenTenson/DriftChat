@@ -1,9 +1,11 @@
 package com.app.driftchat.ui.viewmodels
 
+import android.R
 import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -18,16 +20,14 @@ import com.google.firebase.firestore.ListenerRegistration
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
 
-
-val messageMap = hashMapOf<String, Any>(
-    "id" to 0,
-    "name" to "testkasutaja",
-    "Message" to "test"
-)
-
 @HiltViewModel
 class ChatViewModel @Inject constructor() : ViewModel() {
     val messages = mutableStateListOf<String>()
+
+    //for showing user errors from firestore
+    val errorMsg = mutableStateOf<String>("");
+    //when user is waiting for connection from another user
+    val isWaitingForOtherPerson = mutableStateOf<Boolean>(false);
     private var userID: String? = null
     private var roomID: String? = null
     private var timeSinceLast = 0L
@@ -48,7 +48,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
         if (currentRoomID.isNullOrBlank() || currentUserID.isNullOrBlank()) { //? lahti saamine
             Log.w(TAG, "Cannot start message listener: Room ID or User ID is missing.")
-            return
+            throw Exception("couldn't start message session");
         }
 
         messageListenerRegistration?.remove()
@@ -58,6 +58,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             .whereNotEqualTo("id", currentUserID)
             .addSnapshotListener { snapshots, error ->
                 if (error != null) {
+                    errorMsg.value = "failed to listen to other persons messages";
                     Log.e(TAG, "Message listen failed: ${error.message}", error)
                     return@addSnapshotListener
                 }
@@ -86,16 +87,19 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             .whereArrayContains("members", searchID)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    errorMsg.value = "failed to connect to other person";
                     Log.e(TAG, "Chat room listen failed: ${error.message}", error)
                     return@addSnapshotListener
                 }
 
                 if (snapshot != null && !snapshot.isEmpty) {
                     for (document in snapshot.documents) {
-                        Log.d(TAG, "Found chat room: ${document.id}")
+                        setIsWaiting(false)
+                        errorMsg.value = ""
                         roomID = document.id
                         startMessageListener()
                         val members = document.get("members") as? List<*>
+                        Log.d(TAG, "Found chat room: ${document.id}")
                         Log.d(TAG, "Room ${document.id} members: $members")
 
                     }
@@ -106,7 +110,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
     fun addUserToWaitList(userData: UserData?) {
         val now = System.currentTimeMillis()
-
+        setIsWaiting(true)
         if (now-timeSinceLast<2000) {    //chatroomscreen composeb mitu korda aga koos hiltview + lisa checkiga saab ymber astuda mitu korda saatmisest
             Log.d(TAG, "WaitList addition skipped. Already started.")
             return
@@ -127,6 +131,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 startChatRoomListener()
             }
             .addOnFailureListener { e ->
+                setIsWaiting(false)
+                errorMsg.value = "failed to connect to the server"
                 Log.w(TAG, "Error adding to waitList", e)
             }
 
@@ -150,12 +156,23 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 }
                 .addOnFailureListener { e ->
                     Log.w(TAG, "Error adding document", e)
+                    errorMsg.value = "failed to send message"
                 }
 
         }
 
     }
+    fun setIsWaiting(value: Boolean) {
+        isWaitingForOtherPerson.value = value;
+    }
+
+    fun cleanMessages(){
+        messages.clear()
+        messages.addAll(listOf("", "", "Welcome to the chat!"))
+    }
+
     override fun onCleared() {
+        setIsWaiting(false)
         super.onCleared()
         chatRoomListenerRegistration?.remove()
         messageListenerRegistration?.remove()
