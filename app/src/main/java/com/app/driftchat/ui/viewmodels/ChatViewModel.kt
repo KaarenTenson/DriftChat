@@ -210,7 +210,10 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
     fun sendMessage(message: String, userData: UserData?) {      //Kui message tyhi pole motet database lisada
         if (message.isNotBlank()) {
-            messages.add(message.trim())
+            val trimmedMessage = message.trim()
+            val senderName = userData?.name ?: "You"
+
+            messages.add("$senderName: $trimmedMessage")
 
             val messageMap = hashMapOf<String, Any>(
                 "id" to (userID ?: 0),
