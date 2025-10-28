@@ -17,6 +17,8 @@ import com.app.driftchat.ui.screens.UserDataScreen
 import com.app.driftchat.ui.theme.DriftChatTheme
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.driftchat.ui.viewmodels.ChatViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -26,7 +28,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: UserDataViewModel = viewModel()
-            AppNav(viewModel)
+            val chatViewModel: ChatViewModel = hiltViewModel()
+            AppNav(viewModel,chatViewModel)
         }
     }
 }
