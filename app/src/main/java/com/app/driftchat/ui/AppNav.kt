@@ -34,6 +34,7 @@ fun AppNav(viewModel: UserDataViewModel) {
 
         composable(Screen.ChatRoom.route) {
             ChatRoom(
+                userViewModel = viewModel,
                 onSwipeRight =  { navController.navigate(Screen.UserData.route) }
             )
         }

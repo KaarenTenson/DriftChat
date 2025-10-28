@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -25,10 +26,19 @@ import com.app.driftchat.ui.components.MatchCam
 import com.app.driftchat.ui.components.MessageBox
 import com.app.driftchat.ui.components.UserCam
 import com.app.driftchat.ui.viewmodels.ChatViewModel
-
+import com.app.driftchat.ui.viewmodels.UserDataViewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 @Composable
-fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel = viewModel()) {
+fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel = viewModel(), userViewModel: UserDataViewModel) {
     // screen
+    val userData = userViewModel.data.collectAsState().value
+
+    LaunchedEffect(Unit) {
+        chatViewModel.addUserToWaitList(userData)
+    }
+
     Box(modifier = Modifier
         .fillMaxSize()
         .pointerInput(Unit) {
@@ -90,7 +100,7 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel = viewModel(
             .padding(bottom = 40.dp, start = 40.dp, end = 40.dp)
         ) {
             MessageBox(
-                onSendMessage = { Text -> chatViewModel.sendMessage(Text) },
+                onSendMessage = { Text -> chatViewModel.sendMessage(Text,userData) },
             )
         }
     }

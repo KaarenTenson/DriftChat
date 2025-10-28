@@ -7,18 +7,21 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.app.driftchat.domainmodel.UserData
 
 @SuppressLint("StaticFieldLeak")
-val db = Firebase.firestore("messages12")
+val db = Firebase.firestore("(default)")
 
-val messageMap = hashMapOf(
-    "id" to 1,
-    "name" to "Andrus",
-    "Message" to "Hello"
+
+val messageMap = hashMapOf<String, Any>(
+    "id" to 0,
+    "name" to "testkasutaja",
+    "Message" to "test"
 )
 
 class ChatViewModel : ViewModel() {
     val messages = mutableStateListOf<String>()
+    private var userID: String? = null
 
     init {
         messages.add("")
@@ -26,17 +29,44 @@ class ChatViewModel : ViewModel() {
         messages.add("Welcome to the chat!")
     }
 
-    fun sendMessage(message: String) {
-        if (message.isNotBlank()) {
-            messages.add(message.trim())
-        }
-        db.collection("messages")
-            .add(messageMap)
+
+    fun addUserToWaitList(userData: UserData?) {
+        val waitListEntry = hashMapOf<String, Any>(
+            "userId" to (userData?.id ?: 0),
+            "createdAt" to (System.currentTimeMillis())
+        )
+
+        db.collection("waitList")
+            .add(waitListEntry)
             .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+                Log.d(TAG, "User added to waitList with ID: ${documentReference.id}")
+                userID=documentReference.id
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
+                Log.w(TAG, "Error adding to waitList", e)
             }
+    }
+
+    fun sendMessage(message: String, userData: UserData?) {      //Kui message tyhi pole motet database lisada
+        if (message.isNotBlank()) {
+            messages.add(message.trim())
+
+            val messageMap = hashMapOf<String, Any>(
+                "id" to (userID ?: 0),
+                "name" to (userData?.name ?: "Unknown"),
+                "Message" to message.trim()
+            )
+
+            db.collection("messages")
+                .add(messageMap)
+                .addOnSuccessListener { documentReference ->
+                    Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+                }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "Error adding document", e)
+                }
+
+        }
+
     }
 }
