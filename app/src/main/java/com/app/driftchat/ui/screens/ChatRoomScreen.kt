@@ -30,12 +30,14 @@ import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
+
 @Composable
-fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel = viewModel(), userViewModel: UserDataViewModel) {
+fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewModel: UserDataViewModel) {
     // screen
     val userData = userViewModel.data.collectAsState().value
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(userData?.id) {
         chatViewModel.addUserToWaitList(userData)
     }
 
