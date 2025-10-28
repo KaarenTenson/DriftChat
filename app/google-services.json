@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925535991085",
+    "project_id": "drift-chat-c5c53",
+    "storage_bucket": "drift-chat-c5c53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925535991085:android:d05fad44cfc82ad1d60fa4",
+        "android_client_info": {
+          "package_name": "com.app.driftchat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP89juCeQB1Tvhev4914cx-nG9MA3vdx4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

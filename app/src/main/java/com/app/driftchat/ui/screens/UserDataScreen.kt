@@ -229,7 +229,7 @@ fun UserDataScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Write something about yourself",
+                        text = "Which quote speaks to you?",
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = MaterialTheme.typography.titleMedium.fontSize,
