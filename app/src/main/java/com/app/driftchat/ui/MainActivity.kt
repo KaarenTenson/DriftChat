@@ -1,24 +1,18 @@
 package com.app.driftchat.ui
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.app.driftchat.ui.screens.UserDataScreen
-import com.app.driftchat.ui.theme.DriftChatTheme
-import com.app.driftchat.ui.viewmodels.UserDataViewModel
-import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.driftchat.ui.viewmodels.ChatViewModel
+import com.app.driftchat.ui.viewmodels.UserDataViewModel
+import com.app.driftchat.utils.NetworkMonitor
+import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -26,11 +20,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // ✅ Start monitoring network connection
+        NetworkMonitor.register(this)
+
         setContent {
-            val viewModel: UserDataViewModel = viewModel()
+            val userViewModel: UserDataViewModel = viewModel()
             val chatViewModel: ChatViewModel = hiltViewModel()
-            AppNav(viewModel,chatViewModel)
+
+            // ✅ Observe real-time network state
+            val isConnected by NetworkMonitor.isConnected.collectAsState()
+
+            if (!isConnected) {
+                Toast.makeText(this, "No internet connection!", Toast.LENGTH_LONG).show()
+            }
+
+            AppNav(userViewModel, chatViewModel)
         }
     }
-}
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // ✅ Stop monitoring to avoid leaks
+        NetworkMonitor.unregister()
+    }
+}
