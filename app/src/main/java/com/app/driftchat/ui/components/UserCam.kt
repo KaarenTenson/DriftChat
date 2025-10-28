@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
+// User camera (smaller camera on the top)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun UserCam() {
@@ -61,6 +62,7 @@ fun UserCam() {
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
+            // if camera permission is granted, show camera preview, else show text
             if (cameraPermissionState.status.isGranted) {
                 CameraPreview()
             } else {
@@ -75,17 +77,23 @@ private fun CameraPreview() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
+    // creates a View that displays camera feed
     val previewView = remember { PreviewView(context) }
 
+    // camera setup
     LaunchedEffect(Unit) {
+        // manages camera lifecycle
         val cameraProvider = ProcessCameraProvider.getInstance(context).get()
 
+        // connects preview to camera where frames will be rendered
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
 
+        // selects camera
         val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
+        // binds camera to lifecycle
         try {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview)

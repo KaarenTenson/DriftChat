@@ -86,8 +86,7 @@ fun HobbiesSelector(
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
                 .border(2.dp, Color.Black, RoundedCornerShape(50.dp))
-                .fillMaxWidth()
-                .shadow(100.dp, RoundedCornerShape(50.dp)),
+                .fillMaxWidth(),
             singleLine = true
         )
 

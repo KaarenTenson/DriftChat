@@ -50,10 +50,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
+import com.app.driftchat.ui.components.RandomQuoteGetter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwipeLeft: () -> Unit) {
+fun UserDataScreen(
+    viewModel: UserDataViewModel,
+    onSwipeRight: () -> Unit,
+    onSwipeLeft: () -> Unit) {
     // Collect the state once at the top
     val userData by viewModel.data.collectAsState()
 
@@ -61,7 +65,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
     var name by remember(userData) { mutableStateOf(userData?.name ?: "") }
     var description by remember(userData) { mutableStateOf(userData?.description ?: "") }
     val selectedHobbies = remember(userData) { mutableStateOf(userData?.hobbies ?: emptySet()) }
-    val selectedGender = remember(userData) { mutableStateOf(userData?.gender ?: Gender.MALE) } // Default to MALE or another sensible default
+    val selectedGender = remember(userData) { mutableStateOf(userData?.gender ?: Gender.MALE) } // default to male
 
     val maxNameLength = 40
     val maxDescriptionLength = 500
@@ -122,7 +126,8 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                                 name = name,
                                 hobbies = selectedHobbies.value,
                                 description = description,
-                                gender = selectedGender.value
+                                gender = selectedGender.value,
+                                //quote =
                             )
                         )
                         if (dragAmount > 50) {
@@ -188,7 +193,6 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                             .clip(RoundedCornerShape(50.dp))
                             .border(2.dp, borderColor, RoundedCornerShape(50.dp))
                             .fillMaxWidth()
-                            .shadow(480.dp, RoundedCornerShape(50.dp))
                     )
                 }
                 // for displaying error message if missing name
@@ -208,12 +212,35 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                     )
                 }
 
-                //for choosing hobbies
+                // for choosing hobbies
                 Row (
                     modifier = Modifier
                         .padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp)
                 ) {
                     HobbiesSelector(allHobbies = stringArrayResource(R.array.hobbies_array), selectedHobbies = selectedHobbies)
+                }
+
+                // random quote getter
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, top= 10.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Write something about yourself",
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    )
+                }
+
+                // random quote getter
+                Row (
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp),
+                ) {
+                    RandomQuoteGetter()
                 }
 
                 // description box title
@@ -231,6 +258,7 @@ fun UserDataScreen(viewModel: UserDataViewModel, onSwipeRight: () -> Unit, onSwi
                         fontSize = MaterialTheme.typography.titleMedium.fontSize,
                     )
                 }
+
                 // for writing description
                 Row (
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp, bottom = 60.dp),

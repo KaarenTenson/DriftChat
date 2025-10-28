@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.app.driftchat.domainmodel.Gender
 import com.app.driftchat.data.Converters
+import com.app.driftchat.ui.viewmodels.QuoteViewModel
 
 @Entity(tableName = "user_data")
 @TypeConverters(Converters::class)
@@ -14,5 +15,6 @@ data class UserData(
     var name: String?,
     var hobbies: Set<String>,
     var description: String?,
-    var gender: Gender?
+    var gender: Gender?,
+    //var quote: Quote?
 )
