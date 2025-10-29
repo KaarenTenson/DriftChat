@@ -78,7 +78,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                                 Log.d(TAG, "📩 New message received: ${document.id}")
                                 messages.add("$senderName: $msgText")
                             }
-                            // ignore MODIFIED and REMOVED changes
+
                             else -> {}
                         }
                     }
@@ -88,7 +88,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     fun startChatRoomListener(userData: UserData? = null) {
         val searchID = userID
 
-        if (searchID.isNullOrBlank()) { //Selleks et String? lahti saada
+        if (searchID.isNullOrBlank()) {
             Log.w(TAG, "userID null or blank")
             return
         }
@@ -121,7 +121,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
     }
 
-    fun startLeftChatListener(userData: UserData?) {
+    fun startLeftChatListener(userData: UserData?) {//Starts a listener for collection Leftchat which consists of rooms that have 1 participant
+        //If the user is in a room that was added to Leftchat collection they will be added back to the waitlist
         val currentRoomID = roomID
         val currentUserID = userID
         if (currentRoomID.isNullOrBlank()) {
@@ -165,10 +166,10 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
     }
 
-    fun addUserToWaitList(userData: UserData?) {
+    fun addUserToWaitList(userData: UserData?) {//Adds user to the waitlist so we can connect them  with another participant
         val now = System.currentTimeMillis()
         setIsWaiting(true)
-        if (now-timeSinceLast<2000) {    //chatroomscreen composeb mitu korda aga koos hiltview + lisa checkiga saab ymber astuda mitu korda saatmisest
+        if (now-timeSinceLast<2000) {
             Log.d(TAG, "WaitList addition skipped. Already started.")
             return
         }
@@ -195,7 +196,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
     }
 
-    fun removeUserFromWaitList() {
+    fun removeUserFromWaitList() {//Function that is meant to remove a user from the waitlist if they do not wait to be connected to another user
         val currentUserDocId = userID ?: return
         val now = System.currentTimeMillis()
         if (now - timeSinceLastRemoval < 2000) {
@@ -214,7 +215,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 Log.e(TAG, "Failed to remove waitList entry", e)
             }
     }
-    fun addUserToLeftChat(userData: UserData?) {
+    fun addUserToLeftChat(userData: UserData?) {//Adds room to Leftchat collection which consists of the roomID of the room user left from
+        // userID that left the room and a timestamp.
         val currentRoomID = roomID
         val currentUserID = userID
         if (currentRoomID.isNullOrBlank() || isWaitingForOtherPerson.value) {
@@ -253,7 +255,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
 
 
-    fun sendMessage(message: String, userData: UserData?) {      //Kui message tyhi pole motet database lisada
+    fun sendMessage(message: String, userData: UserData?) {
         if (message.isNotBlank()) {
             val trimmedMessage = message.trim()
             val senderName = userData?.name ?: "You"
