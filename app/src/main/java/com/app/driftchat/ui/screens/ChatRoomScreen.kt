@@ -50,13 +50,6 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 }
             }
         },) {
-        if (!chatViewModel.errorMsg.value.isEmpty()) {
-            ErrorBox(chatViewModel.errorMsg.value)
-        } else {
-            if (chatViewModel.isWaitingForOtherPerson.value) {
-                LoadingBox();
-            }
-        }
 
         // cameras
         MatchCam()
@@ -113,6 +106,13 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
             )
         }
     }
+    if (!chatViewModel.errorMsg.value.isEmpty()) {
+        ErrorBox(chatViewModel.errorMsg.value)
+    } else {
+        if (chatViewModel.isWaitingForOtherPerson.value) {
+            LoadingBox();
+        }
+    }
 }
 
 
@@ -123,7 +123,7 @@ fun ErrorBox(errorMessage: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = 0.85f },
+            .graphicsLayer { alpha = 0.95f },
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.Surface(
@@ -147,7 +147,7 @@ fun LoadingBox() {
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp)
-            .graphicsLayer { alpha = 0.9f },
+            .graphicsLayer { alpha = 0.95f },
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.CircularProgressIndicator()

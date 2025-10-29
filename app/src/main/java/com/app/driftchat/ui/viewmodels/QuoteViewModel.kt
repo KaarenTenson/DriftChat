@@ -17,8 +17,9 @@ class QuoteViewModel : ViewModel() {
 
     private val apiKey = "OyJzjuIbLhOemi1zotkxLA==oBkgcSAS0zMyhSGM"
 
+    // API call function
     fun fetchRandomQuote() {
-        if (isLoading) return
+        if (isLoading) return // returns if another API call in progress
 
         viewModelScope.launch {
             isLoading = true
