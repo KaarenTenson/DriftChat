@@ -11,3 +11,4 @@ The whole chatroom's logic works through firestore, it has a collection for wait
  These messages are served by a listener.
 
 ## Error handling strategy
+Network-related issues are managed through a real-time NetworkMonitor that continuously tracks connectivity using Android’s ConnectivityManager and a socket-based reachability test, ensuring accurate detection of internet availability. When connectivity is lost, the app notifies the user via a Toast or UI banner and automatically recovers once the network is restored. At the screen level, components such as ChatRoomScreen and UserDataScreen handle validation and display errors directly in the UI through elements like ErrorBox overlays and inline input feedback, preventing crashes and preserving usability.
