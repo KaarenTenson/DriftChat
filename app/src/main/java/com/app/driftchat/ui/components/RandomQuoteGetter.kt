@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.driftchat.ui.viewmodels.QuoteViewModel
 
+// Component for getting a random quote from the API and displaying it in a box
 @Composable
 fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -29,13 +30,13 @@ fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
                 .border(width = 2.dp, color = Color.Black, RoundedCornerShape(25.dp))
                 .clip(RoundedCornerShape(25.dp))
                 .fillMaxSize(),
-        ) {
+        ) { // if no other API calls in progress, show the random quote from the viewmodel
             if (!QuoteViewModel.isLoading) {
                 Text(
                     text = QuoteViewModel.quote,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     modifier = Modifier.padding(25.dp)
-                )
+                ) // if another API call is in progress show loading circle
             } else if (QuoteViewModel.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
@@ -51,8 +52,8 @@ fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
             colors = buttonColors(
                 containerColor = Color.Black
             ),
-            onClick = { QuoteViewModel.fetchRandomQuote() },
-            enabled = !QuoteViewModel.isLoading,
+            onClick = { QuoteViewModel.fetchRandomQuote() }, // API call
+            enabled = !QuoteViewModel.isLoading, // disables button if another API call in progress
         ) {
             Text(
                 text = "Get Random Quote",
