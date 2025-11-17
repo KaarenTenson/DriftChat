@@ -263,11 +263,16 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
 
     fun sendMessage(message: String, userData: UserData?) {
+        if (roomID == null) {
+            return
+        }
+
         if (message.isNotBlank()) {
             val trimmedMessage = message.trim()
             val senderName = userData?.name ?: "You"
 
             messages.add("$senderName: $trimmedMessage")
+
 
             val messageMap = hashMapOf<String, Any>(
                 "id" to (userID ?: 0),
