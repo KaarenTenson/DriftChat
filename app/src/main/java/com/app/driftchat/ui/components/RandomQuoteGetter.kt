@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,7 +28,7 @@ fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .border(width = 2.dp, color = Color.Black, RoundedCornerShape(25.dp))
+                .border(width = 2.dp, color = MaterialTheme.colorScheme.secondary, RoundedCornerShape(25.dp))
                 .clip(RoundedCornerShape(25.dp))
                 .fillMaxSize(),
         ) { // if no other API calls in progress, show the random quote from the viewmodel
@@ -50,7 +51,7 @@ fun RandomQuoteGetter(QuoteViewModel: QuoteViewModel) {
 
         Button(
             colors = buttonColors(
-                containerColor = Color.Black
+                containerColor = MaterialTheme.colorScheme.secondary
             ),
             onClick = { QuoteViewModel.fetchRandomQuote() }, // API call
             enabled = !QuoteViewModel.isLoading, // disables button if another API call in progress

@@ -85,7 +85,7 @@ fun HobbiesSelector(
             },
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
-                .border(2.dp, Color.Black, RoundedCornerShape(50.dp))
+                .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(50.dp))
                 .fillMaxWidth(),
             singleLine = true
         )
@@ -103,7 +103,7 @@ fun HobbiesSelector(
             modifier = Modifier
             .height(200.dp)
             .width(300.dp)
-            .border(width = 1.dp,color = Color.Black,RoundedCornerShape(50.dp))
+            .border(width = 1.dp,color = MaterialTheme.colorScheme.secondary,RoundedCornerShape(50.dp))
         ) {
                 items(filteredHobbies) { hobby ->
                     val checked = hobby in selectedHobbies.value
@@ -126,7 +126,7 @@ fun HobbiesSelector(
                     ) {
                         Button(
                             colors = buttonColors(
-                                containerColor = Color.Black
+                                containerColor = MaterialTheme.colorScheme.secondary
                             ),
                             onClick = {
                                 if (selectedHobbies.value.contains(hobby)) {

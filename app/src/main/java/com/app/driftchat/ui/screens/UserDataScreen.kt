@@ -48,7 +48,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.RectangleShape
 import com.app.driftchat.domainmodel.UserData
 import com.app.driftchat.ui.components.RandomQuoteGetter
 import com.app.driftchat.ui.viewmodels.QuoteViewModel
@@ -89,13 +88,13 @@ fun UserDataScreen(
     val nameError = name.isEmpty()
 
     // If name is missing, border red and show error message
-    var borderColor = Color.Black
+    var borderColor = MaterialTheme.colorScheme.secondary
     var errorMessage = ""
     if (nameError) {
         borderColor = Color.Red
         errorMessage = "Required"
     } else {
-        borderColor = Color.Black
+        borderColor = MaterialTheme.colorScheme.secondary
         errorMessage = ""
     }
 
@@ -287,14 +286,13 @@ fun UserDataScreen(
                         ),
                         maxLines = 20,
                         textStyle = TextStyle(
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            color = Color.Black),
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
                         modifier = Modifier
                             .padding(start = 10.dp, end = 10.dp)
                             .defaultMinSize(0.dp, 150.dp)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(30.dp))
-                            .border(2.dp, Color.Black, RoundedCornerShape(30.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(30.dp))
                             .shadow(480.dp, RoundedCornerShape(30.dp)),
                     )
                 }
@@ -339,12 +337,12 @@ fun UserDataScreen(
                                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,)
                                 Checkbox(
                                     colors = CheckboxDefaults.colors(
-                                        checkedColor = Color.Black,
+                                        checkedColor = MaterialTheme.colorScheme.secondary,
                                         uncheckedColor = MaterialTheme.colorScheme.primary,
+
                                     ),
                                     checked = selectedGender.value == gender,
                                     onCheckedChange = { selectedGender.value = gender }
-
                                 )
                             }
                         }
