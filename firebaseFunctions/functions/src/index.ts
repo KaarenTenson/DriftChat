@@ -28,7 +28,7 @@ exports.matchWaitList = functions.onDocumentCreated(
 
           const chatRoomRef = db.collection("chatRooms").doc();
           transaction.set(chatRoomRef, {
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: Date.now(),
             members: [newUserId, matchedUserId],
             lastMessage: null,
           });

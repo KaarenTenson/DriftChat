@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 
 
 @SuppressLint("StaticFieldLeak")
@@ -61,6 +62,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messageListenerRegistration = db.collection("messages")
             .whereEqualTo("roomID", currentRoomID)
             .whereNotEqualTo("id", currentUserID)
+            .limit(1)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshots, error ->
                 if (error != null) {
                     errorMsg.value = "failed to listen to other persons messages";
@@ -96,6 +99,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
         chatRoomListenerRegistration = db.collection("chatRooms")
             .whereArrayContains("members", searchID)
+            .limit(1)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     errorMsg.value = "failed to connect to other person";
@@ -135,6 +140,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
         leftChatListenerRegistration = db.collection("Leftchat")
             .whereEqualTo("roomID", currentRoomID)
+            .limit(1)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshots, error ->
                 if (error != null) {
                     Log.e(TAG, "LeftChat listener failed: ${error.message}", error)
@@ -235,7 +242,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         val leftChatEntry = hashMapOf<String, Any>(
             "roomID" to currentRoomID,
             "leftBy" to (userID.toString()),
-            "timestamp" to now
+            "createdAt" to now
         )
 
 
@@ -266,7 +273,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 "id" to (userID ?: 0),
                 "name" to (userData?.name ?: "Unknown"),
                 "Message" to message.trim(),  //message
-                "roomID" to (roomID ?: 0)
+                "roomID" to (roomID ?: 0),
+                "createdAt" to System.currentTimeMillis()
             )
 
             db.collection("messages")
