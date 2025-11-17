@@ -3,7 +3,10 @@ package com.app.driftchat.ui.screens
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -68,8 +71,10 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
             reverseLayout = true,
             verticalArrangement = Arrangement.Bottom,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 110.dp, top = 660.dp, start = 35.dp, end = 20.dp)
+                .align( Alignment.BottomEnd)
+                .fillMaxHeight(0.4f)
+                .fillMaxWidth()
+                .padding(bottom = 110.dp, start = 35.dp, end = 20.dp)
                 // onGloballyPositioned gives top-left coordinates (positionInWindow() and size
                 .onGloballyPositioned { coordinates ->
                     listTopPos = coordinates.positionInWindow().y // top-left coordinates (x1, y2) -> y2
