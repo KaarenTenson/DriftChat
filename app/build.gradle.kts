@@ -99,8 +99,9 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
 
-    implementation("com.mesibo.api:mesibo:2.0.0")
-    implementation("com.mesibo.api:webrtc:2.0.0")
+    implementation("com.mesibo.api:mesibo:2.7.19+")
+    implementation("com.mesibo.api:calls:2.7.19+")
+    implementation("com.mesibo.api:ui:2.7.19+")
 
 
     // Room Database
