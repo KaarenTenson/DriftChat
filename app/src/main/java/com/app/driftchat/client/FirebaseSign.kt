@@ -60,6 +60,7 @@ class FirebaseSign(
     override fun sendOffer(target: String, sdp: String) = sendEvent(target, "Offer", sdp)
     override fun sendAnswer(target: String, sdp: String) = sendEvent(target, "Answer", sdp)
     override fun sendIceCandidate(target: String, candidate: IceCandidate) {
+        Log.d("fb","sendingICE")
         val data = mapOf(
             "type" to "IceCandidate",
             "caller" to currentUserId,

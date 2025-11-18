@@ -33,6 +33,7 @@ class WebRtcRepository(
 
     fun startCall(target: String) {
         Log.d("WEB", "startinc chat Leftchat event — triggered by current user")
+        Log.d("WEB",target)
         webRtcClient.call(target)
     }
 
