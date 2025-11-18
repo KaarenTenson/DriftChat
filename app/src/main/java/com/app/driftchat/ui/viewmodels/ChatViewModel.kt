@@ -30,7 +30,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     //when user is waiting for connection from another user
     val isWaitingForOtherPerson = mutableStateOf<Boolean>(false);
     private var userID: String? = null
-    private var roomID: String? = null
+    private val _roomID = mutableStateOf<String?>(null)
+    val roomID = _roomID
     private var timeSinceLast = 0L
 
     private var lastLeftChatCall = 0L
@@ -47,9 +48,11 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messages.add("Welcome to the chat!")
     }
 
-
+    fun getRoomId(): String?{
+        return _roomID.value;
+    }
     fun startMessageListener() {
-        val currentRoomID = roomID
+        val currentRoomID = _roomID.value
         val currentUserID = userID
 
         if (currentRoomID.isNullOrBlank() || currentUserID.isNullOrBlank()) { //? lahti saamine
@@ -112,7 +115,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                     for (document in snapshot.documents) {
                         setIsWaiting(false)
                         errorMsg.value = ""
-                        roomID = document.id
+                        _roomID.value = document.id
                         startMessageListener()
                         startLeftChatListener(userData)
                         val members = document.get("members") as? List<*>
@@ -128,7 +131,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
     fun startLeftChatListener(userData: UserData?) {//Starts a listener for collection Leftchat which consists of rooms that have 1 participant
         //If the user is in a room that was added to Leftchat collection they will be added back to the waitlist
-        val currentRoomID = roomID
+        val currentRoomID = _roomID.value
         val currentUserID = userID
         if (currentRoomID.isNullOrBlank()) {
             Log.w(TAG, "Cannot start LeftChat listener: Room ID missing.")
@@ -224,7 +227,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
     fun addUserToLeftChat(userData: UserData?) {//Adds room to Leftchat collection which consists of the roomID of the room user left from
         // userID that left the room and a timestamp.
-        val currentRoomID = roomID
+        val currentRoomID = _roomID.value
         val currentUserID = userID
         if (currentRoomID.isNullOrBlank() || isWaitingForOtherPerson.value) {
             Log.w(TAG, "Cannot add to Leftchat — roomID is null'/blank or user is not in chat'.")
@@ -263,7 +266,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
 
     fun sendMessage(message: String, userData: UserData?) {
-        if (roomID == null) {
+        if (_roomID.value == null) {
             return
         }
 
@@ -278,7 +281,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 "id" to (userID ?: 0),
                 "name" to (userData?.name ?: "Unknown"),
                 "Message" to message.trim(),  //message
-                "roomID" to (roomID ?: 0),
+                "roomID" to (_roomID.value ?: 0),
                 "createdAt" to System.currentTimeMillis()
             )
 

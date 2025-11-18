@@ -1,5 +1,6 @@
 package com.app.driftchat.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,19 +31,49 @@ import com.app.driftchat.ui.components.UserCam
 import com.app.driftchat.ui.viewmodels.ChatViewModel
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.runtime.LaunchedEffect
+import com.app.driftchat.client.ClientRtc
+import androidx.compose.ui.platform.LocalContext
+import com.app.driftchat.client.MyWebSocketSignaling
+import androidx.compose.runtime.mutableStateOf
+import org.webrtc.SurfaceViewRenderer
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.layout.size
+
 
 @Composable
 fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewModel: UserDataViewModel) {
     // screen
     val userData = userViewModel.data.collectAsState().value
+    val context = LocalContext.current
+
+    var clientRtcInitialized by remember { mutableStateOf(false) }
+    var clientRtc by remember { mutableStateOf<ClientRtc?>(null) }
+    var localRenderer by remember { mutableStateOf<SurfaceViewRenderer?>(null) }
+    var remoteRenderer by remember { mutableStateOf<SurfaceViewRenderer?>(null) }
+    val roomID by chatViewModel.roomID
 
     LaunchedEffect(userData?.id) {
         chatViewModel.cleanMessages()
         chatViewModel.addUserToWaitList(userData)
     }
 
+    LaunchedEffect(roomID, localRenderer, remoteRenderer) {
+        Log.d("kal", "roomID: $roomID, localRenderer: $localRenderer, remoteRenderer: $remoteRenderer")
+        if (!clientRtcInitialized && roomID != null && localRenderer != null && remoteRenderer != null) {
+            val signalingClient = MyWebSocketSignaling(roomID!!)
+            signalingClient.onOpenCallback = { clientRtc?.createOffer() }
 
+            clientRtc = ClientRtc(
+                context = context,
+                localRenderer = localRenderer!!,
+                remoteRenderer = remoteRenderer!!,
+                signalingClient = signalingClient
+            )
 
+            clientRtc?.init()
+            clientRtcInitialized = true
+        }
+    }
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -53,15 +84,21 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 }
             }
         },) {
-
+        AndroidView(factory = { ctx ->
+            SurfaceViewRenderer(ctx).apply {
+                init(org.webrtc.EglBase.create().eglBaseContext, null)
+                setZOrderMediaOverlay(false)
+                remoteRenderer = this
+            }
+        }, modifier = Modifier.fillMaxSize())
         // cameras
-        MatchCam()
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopEnd
-        ) {
-            UserCam()
-        }
+        AndroidView(factory = { ctx ->
+            SurfaceViewRenderer(ctx).apply {
+                init(org.webrtc.EglBase.create().eglBaseContext, null)
+                setZOrderMediaOverlay(true) // overlay so it’s above remote
+                localRenderer = this
+            }
+        }, modifier = Modifier.size(120.dp).align(Alignment.TopEnd))
 
         // Messages display
         var listTopPos by remember { mutableFloatStateOf(0f) }

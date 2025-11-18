@@ -47,7 +47,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()
     .configureEach { compilerOptions { jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.target.get())) } }
 
 dependencies {
-
+    implementation("com.infobip:google-webrtc:1.0.45036")
     implementation(libs.androidx.core.ktx)
     implementation("androidx.navigation:navigation-compose:2.8.0")
     implementation(libs.androidx.lifecycle.runtime.ktx)
