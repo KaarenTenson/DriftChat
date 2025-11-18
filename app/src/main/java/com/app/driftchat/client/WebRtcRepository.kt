@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.*
 
 class WebRtcRepository(
     private val firebaseSignaling: FirebaseSignaling,
-    private val webRtcClient: NSWebRTCClient
+    public val webRtcClient: NSWebRTCClient
 ) {
     private val _incomingCallEvents = MutableSharedFlow<String>()
     val incomingCallEvents: SharedFlow<String> = _incomingCallEvents
@@ -18,11 +18,15 @@ class WebRtcRepository(
         webRtcClient.initWebrtcClient(username)
         firebaseSignaling.listenForEvents { event ->
             when (event.type) {
+                "Offer" -> {
+                    event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                }
+                "Answer" -> {
+                    event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                }
+                "IceCandidate" -> event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
                 "StartVideoCall" -> _incomingCallEvents.tryEmit(event.caller)
                 "EndCall" -> _callEndedEvents.tryEmit(Unit)
-                "Offer" -> event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
-                "Answer" -> event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
-                "IceCandidate" -> event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
             }
         }
     }

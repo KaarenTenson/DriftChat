@@ -12,7 +12,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.app.driftchat.domainmodel.UserData
 import androidx.lifecycle.viewModelScope
+import com.app.driftchat.client.FirebaseSign
 import com.app.driftchat.client.NSWebRTCClient
+import com.app.driftchat.client.WebRtcRepository
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -42,15 +44,28 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     private var messageListenerRegistration: ListenerRegistration? = null
 
     private var leftChatListenerRegistration: ListenerRegistration? = null
-
-
+    private var repo: WebRtcRepository? = null
     init {
         messages.add("")
         messages.add("")
         messages.add("Welcome to the chat!")
     }
 
+    fun initWebRTC(context: Context, username: String) {
+        if (userID.isNullOrBlank()) {
+            Log.w(TAG, "initWebRTC: userID is null - cannot init")
+            return
+        }
+        val firebaseSignal = FirebaseSign(db, userID!!)
+        repo = WebRtcRepository(firebaseSignal, NSWebRTCClient(context, firebaseSignal))
+        repo?.init(username)
 
+        localVideoTrack = repo?.webRtcClient?.getLocalVideoTrack()
+        repo?.webRtcClient?.setOnRemoteTrackListener { track ->
+            remoteVideoTrack = track
+        }
+        Log.d(TAG, "initWebRTC: completed for user=$userID")
+    }
     fun startMessageListener() {
         val currentRoomID = roomID
         val currentUserID = userID
@@ -118,10 +133,22 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                         roomID = document.id
                         startMessageListener()
                         startLeftChatListener(userData)
+
                         val members = document.get("members") as? List<*>
                         Log.d(TAG, "Found chat room: ${document.id}")
                         Log.d(TAG, "Room ${document.id} members: $members")
-
+                        if (members != null && members.size == 2) {
+                            val other = members.firstOrNull { it != searchID } as? String
+                            if (!other.isNullOrBlank()) {
+                                // only initiate call from one side (deterministic)
+                                if (searchID < other) {
+                                    Log.d(TAG, "startChatRoomListener: we are caller, initiating call to $other")
+                                    repo?.startCall(other)
+                                } else {
+                                    Log.d(TAG, "startChatRoomListener: waiting for offer from $other")
+                                }
+                            }
+                        }
                     }
                 } else {
                     Log.d(TAG, "No active chat rooms found for userId: $userID")
@@ -176,19 +203,14 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
     }
 
-    private lateinit var nsWebRTCClient: NSWebRTCClient
-    fun initWebRTC(context: Context, username: String) {
-        nsWebRTCClient = NSWebRTCClient(context)
-        nsWebRTCClient.initWebrtcClient(username)
-
-        // set local video track
-        localVideoTrack = nsWebRTCClient.getLocalVideoTrack()
-
-        // set remote track listener
-        nsWebRTCClient.setOnRemoteTrackListener { track ->
-            remoteVideoTrack = track
+    suspend fun waitForUserID(): String {
+        while (userID.isNullOrBlank()) {
+            kotlinx.coroutines.delay(50) // small delay to avoid busy loop
         }
+        return userID!!
     }
+
+    private lateinit var nsWebRTCClient: NSWebRTCClient
     fun addUserToWaitList(userData: UserData?) {//Adds user to the waitlist so we can connect them  with another participant
         val now = System.currentTimeMillis()
         setIsWaiting(true)

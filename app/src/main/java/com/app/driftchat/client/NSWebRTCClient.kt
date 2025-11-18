@@ -20,7 +20,8 @@ import org.webrtc.RtpTransceiver
 import org.webrtc.DataChannel
 
 class NSWebRTCClient(
-    private val context: Context
+    private val context: Context,
+    private val signaling: FirebaseSignaling
 ) {
     private val eglBase: EglBase = EglBase.create()
     private lateinit var peerConnectionFactory: PeerConnectionFactory
@@ -70,7 +71,7 @@ class NSWebRTCClient(
 
     fun call(target: String) {
         // Create peer connection & offer SDP
-        createPeerConnection()
+        createPeerConnection(target)
         peerConnection?.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sessionDescription: SessionDescription?) {
                 peerConnection?.setLocalDescription(object : SdpObserver {
@@ -124,11 +125,11 @@ class NSWebRTCClient(
         peerConnection = null
     }
 
-    private fun createPeerConnection(): PeerConnection {
+    private fun createPeerConnection(target: String): PeerConnection {
         val rtcConfig = PeerConnection.RTCConfiguration(emptyList())
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate?) {
-                // Send ICE candidate via Firebase
+                candidate?.let { signaling.sendIceCandidate(target, it) }
             }
 
             override fun onAddStream(p0: MediaStream?) {}

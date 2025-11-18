@@ -25,7 +25,7 @@ fun VideoView(
             SurfaceViewRenderer(ctx).apply {
                 init(eglBase.eglBaseContext, null)
                 setMirror(true)
-                videoTrack?.addSink(this)
+                post { videoTrack?.addSink(this) }
             }
         },
         update = { view ->
