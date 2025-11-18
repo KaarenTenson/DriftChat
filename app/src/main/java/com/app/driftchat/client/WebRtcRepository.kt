@@ -1,5 +1,7 @@
 package com.app.driftchat.client
 
+import android.content.ContentValues.TAG
+import android.util.Log
 import kotlinx.coroutines.flow.*
 
 class WebRtcRepository(
@@ -26,10 +28,12 @@ class WebRtcRepository(
     }
 
     fun startCall(target: String) {
+        Log.d("WEB", "startinc chat Leftchat event — triggered by current user")
         webRtcClient.call(target)
     }
 
     fun answerCall() {
+        Log.d("WEB", "answering call")
         webRtcClient.answer(target = firebaseSignaling.getLastCaller())
     }
 

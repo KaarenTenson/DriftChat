@@ -3,6 +3,7 @@ package com.app.driftchat.ui.components
 import android.content.Context
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import org.webrtc.EglBase
@@ -15,20 +16,26 @@ fun VideoView(
     videoTrack: VideoTrack?,
     modifier: Modifier = Modifier
 ) {
-    val eglBase = EglBase.create()
+    // Create only once
+    val eglBase = remember { EglBase.create() }
 
     AndroidView(
         factory = { ctx ->
             SurfaceViewRenderer(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
                 init(eglBase.eglBaseContext, null)
                 setMirror(true)
+
                 videoTrack?.addSink(this)
             }
         },
-        modifier = modifier
+        update = { view ->
+            // If track changes, update sink safely
+            videoTrack?.addSink(view)
+        },
+        modifier = modifier,
+        onRelease = { view ->
+            videoTrack?.removeSink(view)
+            view.release()
+        }
     )
 }
