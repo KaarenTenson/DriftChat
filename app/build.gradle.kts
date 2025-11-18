@@ -99,6 +99,9 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
 
+    implementation("com.mesibo.api:webrtc:1.0.5")
+
+
     // Room Database
     val room_version = "2.8.1"
     implementation("androidx.room:room-runtime:$room_version")
