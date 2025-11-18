@@ -3,6 +3,7 @@ package com.app.driftchat.ui.viewmodels
 import android.R
 import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -11,12 +12,13 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.app.driftchat.domainmodel.UserData
 import androidx.lifecycle.viewModelScope
+import com.app.driftchat.client.NSWebRTCClient
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-
+import org.webrtc.VideoTrack
 
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
@@ -24,7 +26,8 @@ val db = Firebase.firestore("(default)")
 @HiltViewModel
 class ChatViewModel @Inject constructor() : ViewModel() {
     val messages = mutableStateListOf<String>()
-
+    var localVideoTrack: VideoTrack? = null
+    var remoteVideoTrack: VideoTrack? = null
     //for showing user errors from firestore
     val errorMsg = mutableStateOf<String>("");
     //when user is waiting for connection from another user
@@ -173,6 +176,19 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
     }
 
+    private lateinit var nsWebRTCClient: NSWebRTCClient
+    fun initWebRTC(context: Context, username: String) {
+        nsWebRTCClient = NSWebRTCClient(context)
+        nsWebRTCClient.initWebrtcClient(username)
+
+        // set local video track
+        localVideoTrack = nsWebRTCClient.getLocalVideoTrack()
+
+        // set remote track listener
+        nsWebRTCClient.setOnRemoteTrackListener { track ->
+            remoteVideoTrack = track
+        }
+    }
     fun addUserToWaitList(userData: UserData?) {//Adds user to the waitlist so we can connect them  with another participant
         val now = System.currentTimeMillis()
         setIsWaiting(true)

@@ -102,7 +102,7 @@ dependencies {
     implementation("com.mesibo.api:mesibo:2.7.19+")
     implementation("com.mesibo.api:calls:2.7.19+")
     implementation("com.mesibo.api:ui:2.7.19+")
-
+    implementation("com.mesibo.api:webrtc:1.0.5")
 
     // Room Database
     val room_version = "2.8.1"

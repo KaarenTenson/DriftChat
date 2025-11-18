@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
@@ -30,15 +31,19 @@ import com.app.driftchat.ui.components.UserCam
 import com.app.driftchat.ui.viewmodels.ChatViewModel
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.app.driftchat.ui.components.VideoView
 
 @Composable
 fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewModel: UserDataViewModel) {
     // screen
     val userData = userViewModel.data.collectAsState().value
+    val context = LocalContext.current
 
     LaunchedEffect(userData?.id) {
         chatViewModel.cleanMessages()
         chatViewModel.addUserToWaitList(userData)
+        chatViewModel.initWebRTC(context, userData?.name ?: "User")
     }
 
 
@@ -55,12 +60,24 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
         },) {
 
         // cameras
-        MatchCam()
+        // Remote video (match)
+        VideoView(
+            context = context,
+            videoTrack = chatViewModel.remoteVideoTrack,
+            modifier = Modifier.fillMaxSize()
+        )
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopEnd
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 65.dp, end = 25.dp)
+                .height(160.dp)
+                .width(120.dp)
         ) {
-            UserCam()
+            VideoView(
+                context = context,
+                videoTrack = chatViewModel.localVideoTrack,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         // Messages display
