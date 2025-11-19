@@ -1,6 +1,7 @@
 ### Testing strategy
 
 **Unit tests:** <br>
+The unit test is made for the database. We use JUnit for the test. It checks if the database is working correctly and as intended. To test that, we make a new entity in the database and see how it returns it, if it returns it correctly you should see that a new entity was created and see it's attributes. 
 
 **UI tests:** <br>
 
