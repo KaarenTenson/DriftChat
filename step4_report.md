@@ -4,6 +4,8 @@
 
 **UI tests:** <br>
 
+UI testing strategy checks if the navigation between different screens functions as it is supposed to. By swiping to a screen and then checking for an element that is supposed to exist on that screen. By doing that we can check if swiping right or left actually changed the screen and if the screen we ended up on is the one we wanted to actually arrive on.
+
 ### Build process for APK
 
 In Android Studio: <br>
