@@ -51,6 +51,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messages.add("")
         messages.add("")
         messages.add("Welcome to the chat!")
+        startRemoteTrackLogger();
     }
 
     fun initWebRTC(context: Context, username: String) {
@@ -368,6 +369,24 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     fun cleanMessages(){
         messages.clear()
         messages.addAll(listOf("", "", "Welcome to the chat!"))
+    }
+
+    private fun startRemoteTrackLogger() {
+        viewModelScope.launch {
+            while (true) {
+                val track = remoteVideoTrack.value
+                if (track != null) {
+                    Log.d(
+                        "RemoteTrackLogger",
+                        "remoteTrack id=${track.id()}, enabled=${track.enabled()}, state=${track.state()}"
+                    )
+                } else {
+                    Log.d("RemoteTrackLogger", "remoteTrack = null")
+                }
+
+                kotlinx.coroutines.delay(1000) // log every 2 seconds
+            }
+        }
     }
 
     fun reset() {
