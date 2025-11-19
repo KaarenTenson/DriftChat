@@ -13,8 +13,10 @@ class FirebaseSign(
 
     private var lastCaller: String = ""
 
+    override fun sendStartCall(target: String) = sendEvent(target, "StartVideoCall", "")
+
     override fun listenForEvents(onEvent: (SignalingEvent) -> Unit) {
-        Log.d(TAG, "4444444444")
+        Log.d(TAG, "listenForEvents: listener started for user=$currentUserId")
         db.collection("videoCalls")
             .whereEqualTo("callee", currentUserId)
             .addSnapshotListener { snapshot, error ->
@@ -23,36 +25,20 @@ class FirebaseSign(
                     return@addSnapshotListener
                 }
 
-
                 snapshot?.documentChanges?.forEach { change ->
                     val data = change.document.data
+                    Log.d(TAG, "Firestore event: docId=${change.document.id} data=$data")
+
                     val type = data["type"] as? String ?: run {
-                        Log.w(TAG, "listenForEvents: Missing 'type' in document ${change.document.id}")
+                        Log.w(TAG, "Missing type in document")
                         return@forEach
                     }
                     val caller = data["caller"] as? String ?: ""
                     lastCaller = caller
-                    Log.d(TAG, "listenForEvents: Event type=$type from caller=$caller")
 
-                    val sdpString = data["sdp"] as? String
-                    val sdp = sdpString?.let {
-                        SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(
-                                type
-                            ), it
-                        )
-                    }
+                    Log.d(TAG, "Event received: type=$type, caller=$caller, callee=${data["callee"]}")
 
-                    val iceCandidateData = data["iceCandidate"] as? Map<String, Any>
-                    val iceCandidate = iceCandidateData?.let {
-                        IceCandidate(
-                            it["sdpMid"] as String,
-                            (it["sdpMLineIndex"] as Long).toInt(),
-                            it["sdp"] as String
-                        )
-                    }
-
-                    onEvent(SignalingEvent(type, caller, sdp, iceCandidate))
+                    onEvent(SignalingEvent(type, caller))
                 }
             }
     }

@@ -1,5 +1,6 @@
 package com.app.driftchat.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
         chatViewModel.cleanMessages()
         chatViewModel.addUserToWaitList(userData)
         chatViewModel.waitForUserID()
+        Log.d("web","siin")
         chatViewModel.initWebRTC(context, userData?.name ?: "User")
     }
 
@@ -55,23 +57,37 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
         .fillMaxSize()
         .pointerInput(Unit) {
             detectHorizontalDragGestures { _, dragAmount ->
-                if (dragAmount > 50) {
-                    onSwipeRight()
-                }
+                if (dragAmount > 50) onSwipeRight()
             }
-        },) {
-
-        // cameras
-        // Remote video (match)
-        //VideoView(context = context, videoTrack = chatViewModel.remoteVideoTrack, modifier = Modifier.fillMaxSize())
-
-        //Box(
-        //    modifier = Modifier.align(Alignment.TopEnd).size(width = 120.dp, height = 160.dp)
-        //) {
-        //   VideoView(context = context, videoTrack = chatViewModel.localVideoTrack, modifier = Modifier.fillMaxSize())
+        }
+    ) {
+        //Remote video
+        //chatViewModel.remoteVideoTrack.value?.let { remoteTrack ->
+        //    VideoView(
+        //        context = context,
+        //        videoTrack = remoteTrack,
+        //        modifier = Modifier.fillMaxSize()
+        //    )
         //}
 
-        // Messages display
+        //Local video
+
+        chatViewModel.localVideoTrack.value?.let { localTrack ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(width = 120.dp, height = 160.dp)
+                    .padding(8.dp)
+            ) {
+                VideoView(
+                    context = context,
+                    videoTrack = localTrack,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        //Messages display
         var listTopPos by remember { mutableFloatStateOf(0f) }
         var listHeight by remember { mutableFloatStateOf(0f) }
 

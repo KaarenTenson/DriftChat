@@ -55,13 +55,12 @@ class NSWebRTCClient(
     fun initWebrtcClient(username: String) {
         Log.d(TAG, "initWebrtcClient() start username=$username")
 
-        // Prevent double init
         if (peerConnectionFactory != null) {
             Log.w(TAG, "initWebrtcClient: already initialized, skipping")
             return
         }
 
-        // 1) Create SurfaceTextureHelper once and keep it
+        // 1) SurfaceTextureHelper
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
 
         // 2) Initialize PeerConnectionFactory
@@ -69,31 +68,39 @@ class NSWebRTCClient(
             .setEnableInternalTracer(true)
             .createInitializationOptions()
         PeerConnectionFactory.initialize(options)
+        peerConnectionFactory = PeerConnectionFactory.builder().createPeerConnectionFactory()
 
-        val builder = PeerConnectionFactory.builder()
-        peerConnectionFactory = builder.createPeerConnectionFactory()
-
-        // 3) Create audio source / track
+        // 3) Audio
         localAudioSource = peerConnectionFactory!!.createAudioSource(MediaConstraints())
         localAudioTrack = peerConnectionFactory!!.createAudioTrack("AUDIO_$username", localAudioSource)
 
-        // 4) Create video capturer and video source / track
+        // 4) Video
         cameraCapturer = createCameraCapturer()
         if (cameraCapturer == null) {
-            Log.e(TAG, "initWebrtcClient: no camera capturer available")
+            Log.e(TAG, "initWebrtcClient: no camera available")
             return
         }
-        localVideoSource = peerConnectionFactory!!.createVideoSource(cameraCapturer!!.isScreencast)
-        // initialize capturer with the kept SurfaceTextureHelper
-        cameraCapturer!!.initialize(surfaceTextureHelper, context, localVideoSource!!.capturerObserver)
-        try {
-            cameraCapturer!!.startCapture(1280, 720, 30)
-        } catch (e: Exception) {
-            Log.e(TAG, "initWebrtcClient: startCapture failed: ${e.message}")
-        }
-        localVideoTrack = peerConnectionFactory!!.createVideoTrack("VIDEO_$username", localVideoSource)
 
-        Log.d(TAG, "initWebrtcClient() done, tracks created - audio=${localAudioTrack != null}, video=${localVideoTrack != null}")
+        // Create video source and track
+        localVideoSource = peerConnectionFactory!!.createVideoSource(cameraCapturer!!.isScreencast)
+        cameraCapturer!!.initialize(surfaceTextureHelper, context, localVideoSource!!.capturerObserver)
+
+        try {
+            // Use higher FPS/resolution for better preview
+            cameraCapturer!!.startCapture(640, 480, 10)
+            Log.d(TAG, "Camera started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "startCapture failed: ${e.message}")
+            return
+        }
+
+        localVideoTrack = peerConnectionFactory!!.createVideoTrack("VIDEO_$username", localVideoSource)
+        localVideoTrack?.setEnabled(true) // ensure track is enabled
+
+        // If you want immediate preview in Compose, call the listener here:
+        localVideoTrack?.let { remoteTrackListener?.invoke(it) }
+
+        Log.d(TAG, "initWebrtcClient() done - audio=${localAudioTrack != null}, video=${localVideoTrack != null}")
     }
 
     /**
@@ -279,18 +286,12 @@ class NSWebRTCClient(
         val iceServers = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
         rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+        Log.d(TAG, "createPeerConnectionIfNeeded called. target=$target, currentTarget=$currentTarget, peerConnection=$peerConnection")
 
         peerConnection = peerConnectionFactory!!.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate?) {
-                Log.d(TAG, "Observer.onIceCandidate: $candidate")
-                candidate?.let {
-                    val sendTarget = target ?: currentTarget
-                    if (!sendTarget.isNullOrBlank()) {
-                        signaling.sendIceCandidate(sendTarget, it)
-                    } else {
-                        Log.w(TAG, "Observer.onIceCandidate: no target to send")
-                    }
-                }
+                Log.d(TAG, "onIceCandidate fired: candidate=$candidate, target=$target, currentTarget=$currentTarget")
+                candidate?.let { signaling.sendIceCandidate(target ?: currentTarget!!, it) }
             }
 
             override fun onAddStream(stream: MediaStream?) { Log.d(TAG, "onAddStream: $stream") }
@@ -302,26 +303,10 @@ class NSWebRTCClient(
             override fun onRemoveStream(stream: MediaStream?) { Log.d(TAG, "onRemoveStream: $stream") }
             override fun onRenegotiationNeeded() { Log.d(TAG, "onRenegotiationNeeded") }
 
-            override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {
-                Log.d(TAG, "onAddTrack: receiver=$receiver streams=${mediaStreams?.size}")
-                mediaStreams?.firstOrNull()?.videoTracks?.firstOrNull()?.let { track ->
-                    Log.d(TAG, "onAddTrack: remote video track discovered")
-                    remoteTrackListener?.invoke(track)
-                }
-            }
-
             override fun onTrack(transceiver: RtpTransceiver?) {
-                Log.d(TAG, "onTrack: transceiver=$transceiver")
-                try {
-                    transceiver?.receiver?.track()?.let { t ->
-                        if (t is VideoTrack) {
-                            Log.d(TAG, "onTrack: remote VideoTrack discovered via transceiver")
-                            remoteTrackListener?.invoke(t)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "onTrack: exception ${e.message}")
-                }
+                val track = transceiver?.receiver?.track() as? VideoTrack
+                Log.d(TAG, "onTrack fired: track=$track")
+                track?.let { remoteTrackListener?.invoke(it) }
             }
 
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) { Log.d(TAG, "onIceCandidatesRemoved: ${candidates?.size ?: 0}") }

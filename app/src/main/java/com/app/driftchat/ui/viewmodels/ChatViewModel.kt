@@ -28,8 +28,8 @@ val db = Firebase.firestore("(default)")
 @HiltViewModel
 class ChatViewModel @Inject constructor() : ViewModel() {
     val messages = mutableStateListOf<String>()
-    var localVideoTrack: VideoTrack? = null
-    var remoteVideoTrack: VideoTrack? = null
+    var localVideoTrack = mutableStateOf<VideoTrack?>(null)
+    var remoteVideoTrack = mutableStateOf<VideoTrack?>(null)
     //for showing user errors from firestore
     val errorMsg = mutableStateOf<String>("");
     //when user is waiting for connection from another user
@@ -52,18 +52,28 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     fun initWebRTC(context: Context, username: String) {
+        Log.d("web","kuuuuus")
         if (userID.isNullOrBlank()) {
             Log.w(TAG, "initWebRTC: userID is null - cannot init")
             return
         }
+        Log.d(TAG, "1111")
         val firebaseSignal = FirebaseSign(db, userID!!)
-        repo = WebRtcRepository(firebaseSignal, NSWebRTCClient(context, firebaseSignal))
-        repo?.init(username)
-
-        localVideoTrack = repo?.webRtcClient?.getLocalVideoTrack()
-        repo?.webRtcClient?.setOnRemoteTrackListener { track ->
-            remoteVideoTrack = track
+        try {
+            repo = WebRtcRepository(firebaseSignal, NSWebRTCClient(context, firebaseSignal))
+            Log.d("web", "repo created, calling init")
+            repo?.init(username)
+        } catch (e: Exception) {
+            Log.e("web", "Failed to create repo or init WebRTC", e)
         }
+
+        localVideoTrack.value = repo?.webRtcClient?.getLocalVideoTrack()
+        Log.d("vid","localvideotrackgot")
+
+        repo?.webRtcClient?.setOnRemoteTrackListener { track ->
+            remoteVideoTrack.value = track
+        }
+
         Log.d(TAG, "initWebRTC: completed for user=$userID")
     }
     fun startMessageListener() {

@@ -15,7 +15,12 @@ class WebRtcRepository(
     val callEndedEvents: SharedFlow<Unit> = _callEndedEvents
 
     fun init(username: String) {
-        webRtcClient.initWebrtcClient(username)
+        Log.d("webr","999999")
+        try {
+            webRtcClient.initWebrtcClient(username)
+        } catch (e:Error) {
+            Log.d("w","kuulukesed")
+        }
         firebaseSignaling.listenForEvents { event ->
             when (event.type) {
                 "Offer" -> {
@@ -34,6 +39,8 @@ class WebRtcRepository(
     fun startCall(target: String) {
         Log.d("WEB", "startinc chat Leftchat event — triggered by current user")
         Log.d("WEB",target)
+        firebaseSignaling.sendStartCall(target)
+
         webRtcClient.call(target)
     }
 

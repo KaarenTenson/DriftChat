@@ -10,41 +10,25 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.webrtc.EglBase
 import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
-
 @Composable
-fun VideoView(
-    context: Context,
-    videoTrack: VideoTrack?,
-    modifier: Modifier = Modifier
-) {
+fun VideoView(context: Context, videoTrack: VideoTrack?, modifier: Modifier = Modifier) {
     val eglBase = remember { EglBase.create() }
+    val renderer = remember { SurfaceViewRenderer(context) }
 
     AndroidView(
-        modifier = modifier,
         factory = { ctx ->
-            SurfaceViewRenderer(ctx).apply {
+            renderer.apply {
                 init(eglBase.eglBaseContext, null)
                 setMirror(true)
-                post { videoTrack?.addSink(this) }
+                videoTrack?.addSink(this)  // attach immediately
             }
         },
-        update = { view ->
-            // Handle track changes
-            view.clearImage()
-            videoTrack?.addSink(view)
-        }
+        modifier = modifier
     )
 
     DisposableEffect(videoTrack) {
         onDispose {
-            videoTrack?.removeSink(null)
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            eglBase.release()
+            videoTrack?.removeSink(renderer)
         }
     }
 }
-

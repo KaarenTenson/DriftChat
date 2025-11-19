@@ -17,4 +17,5 @@ interface FirebaseSignaling {
     fun sendIceCandidate(target: String, candidate: IceCandidate)
     fun sendEndCall()
     fun getLastCaller(): String
+    fun sendStartCall(target: String)
 }
