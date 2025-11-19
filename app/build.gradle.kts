@@ -60,6 +60,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
 
+    // Carousel navigation between screens
+    implementation("androidx.compose.foundation:foundation:1.6.7")
+
+    // Icons for light/dark theme toggle buttons
     implementation("androidx.compose.material:material-icons-extended:1.6.7")
 
     // Retrofit networking and JSON converter

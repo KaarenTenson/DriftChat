@@ -1,9 +1,10 @@
 package com.app.driftchat.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.rememberCoroutineScope
 import com.app.driftchat.ui.screens.ChatRoom
 import com.app.driftchat.ui.screens.UserAboutScreen
 import com.app.driftchat.ui.screens.UserDataScreen
@@ -11,48 +12,67 @@ import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import com.app.driftchat.ui.viewmodels.ChatViewModel
 import com.app.driftchat.ui.viewmodels.QuoteViewModel
 import com.app.driftchat.ui.viewmodels.ThemeViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class) // for pager API
 @Composable
-fun AppNav(viewModel: UserDataViewModel, chatViewModel: ChatViewModel, quoteViewModel: QuoteViewModel, themeViewModel: ThemeViewModel) {
-    val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = Screen.UserData.route
-    ) {
-        composable(Screen.UserData.route) {
-            UserDataScreen(
+fun AppNav(
+    viewModel: UserDataViewModel,
+    chatViewModel: ChatViewModel,
+    quoteViewModel: QuoteViewModel,
+    themeViewModel: ThemeViewModel
+) {
+    val pageCount = 3
+    val initialPage = 1
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { pageCount }
+    )
+    val scope = rememberCoroutineScope()
+
+    HorizontalPager(
+        state = pagerState,
+    ) { page ->
+        when (page) {
+            0 -> UserAboutScreen(
+                viewModel = viewModel,
+                themeViewModel = themeViewModel,
+                onSwipeLeft = {
+                    scope.launch {
+                        pagerState.animateScrollToPage(initialPage)
+                    }
+                }
+            )
+
+            1 -> UserDataScreen(
                 viewModel = viewModel,
                 quoteViewModel = quoteViewModel,
-                onSwipeRight = { navController.navigate(Screen.UserAbout.route) },
-                onSwipeLeft = { navController.navigate(Screen.ChatRoom.route)}
+                onSwipeRight = {
+                    scope.launch {
+                        pagerState.animateScrollToPage(0)
+                    }
+                },
+                onSwipeLeft = {
+                    scope.launch {
+                        pagerState.animateScrollToPage(2)
+                    }
+                }
             )
-        }
 
-        composable(Screen.UserAbout.route) {
-            UserAboutScreen(
-                viewModel = viewModel,
-                themeViewModel,
-                onSwipeLeft = { navController.navigate(Screen.UserData.route) }
-            )
-        }
-
-        composable(Screen.ChatRoom.route) {
-            ChatRoom(
+            2 -> ChatRoom(
                 userViewModel = viewModel,
                 chatViewModel = chatViewModel,
-                onSwipeRight =  {
+                onSwipeRight = {
                     if (chatViewModel.isWaitingForOtherPerson.value) {
                         chatViewModel.removeUserFromWaitList()
                     } else {
                         chatViewModel.addUserToLeftChat(viewModel.data.value)
                     }
-                    navController.navigate(Screen.UserData.route)
+                    scope.launch {
+                        pagerState.animateScrollToPage(initialPage)
+                    }
                 }
-//                    chatViewModel.addUserToLeftChat(viewModel.data.value)
-//                    navController.navigate(Screen.UserData.route) }
             )
         }
-
-
     }
 }
