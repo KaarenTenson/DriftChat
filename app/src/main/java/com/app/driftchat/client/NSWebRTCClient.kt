@@ -281,7 +281,7 @@ class NSWebRTCClient(
 
     // --- Internal helpers --------------------------------------------------
 
-    private fun createPeerConnectionIfNeeded(target: String?) {
+    fun createPeerConnectionIfNeeded(target: String?) {
         if (peerConnection != null) return
         Log.d(TAG, "createPeerConnectionIfNeeded target=$target")
 
@@ -328,12 +328,15 @@ class NSWebRTCClient(
         // Attach local tracks using addTrack() (Unified Plan)
         try {
             // Correct UnifiedPlan: declare transceivers *without linking tracks*
-            peerConnection?.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO)
-            peerConnection?.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO)
+            val audioTransceiver = peerConnection!!.addTransceiver(
+                MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO
+            )
+            audioTransceiver.sender.setTrack(localAudioTrack, true)
 
-            // Then attach local tracks
-            localAudioTrack?.let { peerConnection?.addTrack(it) }
-            localVideoTrack?.let { peerConnection?.addTrack(it) }
+            val videoTransceiver = peerConnection!!.addTransceiver(
+                MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
+            )
+            videoTransceiver.sender.setTrack(localVideoTrack, true)
 
             Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers + tracks")
         } catch (e: Exception) {
