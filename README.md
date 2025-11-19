@@ -1,5 +1,5 @@
 ## Team
-**Name:** Driftchat
+**Name:** Driftchat <br>
 **Members:** Ander Saarniit, Kaaren Tenson, Tristan Laur, Raivo Rander, Tristan Tõruke.
 
 ## Project description
