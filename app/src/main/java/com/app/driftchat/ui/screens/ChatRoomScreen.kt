@@ -62,13 +62,13 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
         }
     ) {
         //Remote video
-        //chatViewModel.remoteVideoTrack.value?.let { remoteTrack ->
-        //    VideoView(
-        //        context = context,
-        //        videoTrack = remoteTrack,
-        //        modifier = Modifier.fillMaxSize()
-        //    )
-        //}
+        chatViewModel.remoteVideoTrack.value?.let { remoteTrack ->
+            VideoView(
+                context = context,
+                videoTrack = remoteTrack,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         //Local video
 

@@ -45,6 +45,8 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
     private var leftChatListenerRegistration: ListenerRegistration? = null
     private var repo: WebRtcRepository? = null
+    private var webRtcClient: NSWebRTCClient? = null
+    private var webRtcInitialized = false
     init {
         messages.add("")
         messages.add("")
@@ -52,27 +54,43 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     fun initWebRTC(context: Context, username: String) {
-        Log.d("web","kuuuuus")
         if (userID.isNullOrBlank()) {
             Log.w(TAG, "initWebRTC: userID is null - cannot init")
             return
         }
-        Log.d(TAG, "1111")
+
+        if (webRtcInitialized) {
+            Log.d(TAG, "initWebRTC: already initialized, skipping")
+            return
+        }
+
+        webRtcInitialized = true
+        Log.d("web", "initWebRTC start")
+
         val firebaseSignal = FirebaseSign(db, userID!!)
-        try {
-            repo = WebRtcRepository(firebaseSignal, NSWebRTCClient(context, firebaseSignal))
-            Log.d("web", "repo created, calling init")
-            repo?.init(username)
-        } catch (e: Exception) {
-            Log.e("web", "Failed to create repo or init WebRTC", e)
+
+        if (webRtcClient == null) {
+            webRtcClient = NSWebRTCClient(context, firebaseSignal).apply {
+                // Listen for remote track first
+                setOnRemoteTrackListener { track ->
+                    Log.d("vid", "Remote VideoTrack received: id=${track.id()}, enabled=${track.enabled()}")
+                    remoteVideoTrack.value = track
+                }
+
+                initWebrtcClient(username)
+
+                val localTrack = getLocalVideoTrack()
+                if (localTrack == null) {
+                    Log.e("vid", "Local video track null after init!")
+                } else {
+                    Log.d("vid", "Local video ready: id=${localTrack.id()}")
+                }
+                localVideoTrack.value = localTrack
+            }
         }
 
-        localVideoTrack.value = repo?.webRtcClient?.getLocalVideoTrack()
-        Log.d("vid","localvideotrackgot")
-
-        repo?.webRtcClient?.setOnRemoteTrackListener { track ->
-            remoteVideoTrack.value = track
-        }
+        repo = WebRtcRepository(firebaseSignal, webRtcClient!!)
+        repo?.init(username)
 
         Log.d(TAG, "initWebRTC: completed for user=$userID")
     }

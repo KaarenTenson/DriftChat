@@ -16,20 +16,32 @@ class WebRtcRepository(
 
     fun init(username: String) {
         Log.d("webr","999999")
-        try {
-            webRtcClient.initWebrtcClient(username)
-        } catch (e:Error) {
-            Log.d("w","kuulukesed")
-        }
         firebaseSignaling.listenForEvents { event ->
             when (event.type) {
+
                 "Offer" -> {
-                    event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                    webRtcClient.currentTarget = event.caller
+
+                    event.sdp?.let { sdp ->
+                        webRtcClient.onRemoteSessionReceived(sdp) {
+                            webRtcClient.answer(event.caller)
+                        }
+                    }
                 }
+
                 "Answer" -> {
-                    event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                    if (event.caller == webRtcClient.currentTarget) {
+                        // Only caller should apply answer
+                        event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                    } else {
+                        Log.d("WEBRTC", "Ignoring self-generated answer")
+                    }
                 }
-                "IceCandidate" -> event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
+
+                "IceCandidate" -> {
+                    event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
+                }
+
                 "StartVideoCall" -> _incomingCallEvents.tryEmit(event.caller)
                 "EndCall" -> _callEndedEvents.tryEmit(Unit)
             }

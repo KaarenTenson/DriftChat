@@ -16,9 +16,18 @@ class FirebaseSign(
     override fun sendStartCall(target: String) = sendEvent(target, "StartVideoCall", "")
 
     override fun listenForEvents(onEvent: (SignalingEvent) -> Unit) {
-        Log.d(TAG, "listenForEvents: listener started for user=$currentUserId")
+        Log.d(TAG, "listenForEvents: starting listeners for $currentUserId")
+
+        // Incoming events (I am the callee)
+        listenSide("callee", onEvent)
+
+        // Outgoing confirmations (I am the caller)
+        listenSide("caller", onEvent)
+    }
+
+    private fun listenSide(field: String, onEvent: (SignalingEvent) -> Unit) {
         db.collection("videoCalls")
-            .whereEqualTo("callee", currentUserId)
+            .whereEqualTo(field, currentUserId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "Firestore listener error: ${error.message}")
@@ -27,18 +36,41 @@ class FirebaseSign(
 
                 snapshot?.documentChanges?.forEach { change ->
                     val data = change.document.data
-                    Log.d(TAG, "Firestore event: docId=${change.document.id} data=$data")
+                    Log.d(TAG, "Firestore event ($field): ${change.document.id} -> $data")
 
-                    val type = data["type"] as? String ?: run {
-                        Log.w(TAG, "Missing type in document")
+                    val type = data["type"] as? String ?: return@forEach
+                    val caller = data["caller"] as? String ?: ""
+                    val callee = data["callee"] as? String ?: ""
+
+                    // 🔥 ignore our own Offer/Answer/ICE that bounce back
+                    if (caller == currentUserId) {
+                        Log.d(TAG, "Ignoring self-sent signaling message.")
                         return@forEach
                     }
-                    val caller = data["caller"] as? String ?: ""
+
                     lastCaller = caller
 
-                    Log.d(TAG, "Event received: type=$type, caller=$caller, callee=${data["callee"]}")
+                    // ---- SDP parsing ----
+                    val sdpString = data["sdp"] as? String
+                    val sdp = if (sdpString != null && (type == "Offer" || type == "Answer")) {
+                        SessionDescription(
+                            if (type == "Offer") SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER,
+                            sdpString
+                        )
+                    } else null
 
-                    onEvent(SignalingEvent(type, caller))
+                    // ---- ICE parsing ----
+                    val iceMap = data["iceCandidate"] as? Map<*, *>
+                    val ice = if (iceMap != null) {
+                        IceCandidate(
+                            iceMap["sdpMid"] as? String,
+                            (iceMap["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
+                            iceMap["sdp"] as? String ?: ""
+                        )
+                    } else null
+
+                    // ---- Emit event ----
+                    onEvent(SignalingEvent(type, caller, sdp, ice))
                 }
             }
     }

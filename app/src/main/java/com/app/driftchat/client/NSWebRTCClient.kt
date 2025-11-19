@@ -1,5 +1,7 @@
 package com.app.driftchat.client
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
@@ -19,6 +21,7 @@ import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
 import org.webrtc.RtpTransceiver
 import org.webrtc.DataChannel
+import org.webrtc.MediaStreamTrack
 
 class NSWebRTCClient(
     private val context: Context,
@@ -27,7 +30,7 @@ class NSWebRTCClient(
     private val TAG = "NSWebRTCClient"
 
     // --- native / long-lived resources (keep references) ---
-    private val eglBase: EglBase = EglBase.create()
+    private val eglBase = EglBaseProvider.eglBase
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
     private var cameraCapturer: CameraVideoCapturer? = null
 
@@ -40,7 +43,7 @@ class NSWebRTCClient(
     private var localAudioTrack: AudioTrack? = null
 
     private var remoteTrackListener: ((VideoTrack) -> Unit)? = null
-    private var currentTarget: String? = null
+    public var currentTarget: String? = null
 
     // --- Public API ---------------------------------------------------------
     fun setOnRemoteTrackListener(callback: (VideoTrack) -> Unit) {
@@ -87,7 +90,9 @@ class NSWebRTCClient(
 
         try {
             // Use higher FPS/resolution for better preview
-            cameraCapturer!!.startCapture(640, 480, 10)
+            Handler(Looper.getMainLooper()).post {
+                cameraCapturer?.startCapture(640, 480, 30)
+            }
             Log.d(TAG, "Camera started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "startCapture failed: ${e.message}")
@@ -98,7 +103,6 @@ class NSWebRTCClient(
         localVideoTrack?.setEnabled(true) // ensure track is enabled
 
         // If you want immediate preview in Compose, call the listener here:
-        localVideoTrack?.let { remoteTrackListener?.invoke(it) }
 
         Log.d(TAG, "initWebrtcClient() done - audio=${localAudioTrack != null}, video=${localVideoTrack != null}")
     }
@@ -179,15 +183,18 @@ class NSWebRTCClient(
     /**
      * Set remote SDP (offer or answer)
      */
-    fun onRemoteSessionReceived(sdp: SessionDescription) {
+    fun onRemoteSessionReceived(sdp: SessionDescription, onComplete: (() -> Unit)? = null) {
         Log.d(TAG, "onRemoteSessionReceived: type=${sdp.type}")
         createPeerConnectionIfNeeded(currentTarget)
+
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
-                Log.d(TAG, "onRemoteSessionReceived: remote description set")
+                Log.d(TAG, "Remote SDP set successfully")
+                onComplete?.invoke()
             }
+
             override fun onSetFailure(error: String?) {
-                Log.e(TAG, "onRemoteSessionReceived: setRemote failed: $error")
+                Log.e(TAG, "Failed to set remote SDP: $error")
             }
         }, sdp)
     }
@@ -304,19 +311,31 @@ class NSWebRTCClient(
             override fun onRenegotiationNeeded() { Log.d(TAG, "onRenegotiationNeeded") }
 
             override fun onTrack(transceiver: RtpTransceiver?) {
-                val track = transceiver?.receiver?.track() as? VideoTrack
-                Log.d(TAG, "onTrack fired: track=$track")
-                track?.let { remoteTrackListener?.invoke(it) }
-            }
+                val mediaTrack = transceiver?.receiver?.track()
 
+                Log.d(TAG, "🔥 onTrack fired: kind=${mediaTrack?.kind()}, id=${mediaTrack?.id()}")
+
+                if (mediaTrack is VideoTrack) {
+                    Log.d(TAG, "🔥 Remote VIDEO track received")
+                    remoteTrackListener?.invoke(mediaTrack)
+                } else {
+                    Log.d(TAG, "Ignoring non-video track")
+                }
+            }
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) { Log.d(TAG, "onIceCandidatesRemoved: ${candidates?.size ?: 0}") }
         })
 
         // Attach local tracks using addTrack() (Unified Plan)
         try {
+            // Correct UnifiedPlan: declare transceivers *without linking tracks*
+            peerConnection?.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO)
+            peerConnection?.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO)
+
+            // Then attach local tracks
             localAudioTrack?.let { peerConnection?.addTrack(it) }
             localVideoTrack?.let { peerConnection?.addTrack(it) }
-            Log.d(TAG, "createPeerConnectionIfNeeded: added local tracks with addTrack()")
+
+            Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers + tracks")
         } catch (e: Exception) {
             Log.e(TAG, "createPeerConnectionIfNeeded: addTrack failed: ${e.message}")
         }
