@@ -32,7 +32,7 @@ class WebRtcRepository(
                 "Answer" -> {
                     if (event.caller == webRtcClient.currentTarget) {
                         // Only caller should apply answer
-                        event.sdp?.let { webRtcClient.onRemoteSessionReceived(it) }
+                        event.sdp?.let { sdp -> webRtcClient.onRemoteSessionReceived(sdp) }
                     } else {
                         Log.d("WEBRTC", "Ignoring self-generated answer")
                     }
@@ -42,7 +42,11 @@ class WebRtcRepository(
                     event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
                 }
 
-                "StartVideoCall" -> _incomingCallEvents.tryEmit(event.caller)
+                "StartVideoCall" -> {
+               //     webRtcClient.initWebrtcClient(username)
+                    webRtcClient.currentTarget = event.caller
+                    _incomingCallEvents.tryEmit(event.caller)
+                }
                 "EndCall" -> _callEndedEvents.tryEmit(Unit)
             }
         }

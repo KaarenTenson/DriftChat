@@ -62,28 +62,31 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
         }
     ) {
         //Remote video
-        chatViewModel.remoteVideoTrack.value?.let { remoteTrack ->
-            VideoView(
-                context = context,
-                videoTrack = remoteTrack,
-                modifier = Modifier.fillMaxSize()
-            )
+        if (chatViewModel.remoteVideoTrack.value != null) {
+            chatViewModel.remoteVideoTrack.value?.let { remoteTrack ->
+                VideoView(
+                    context = context,
+                    videoTrack = remoteTrack,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         //Local video
-
-        chatViewModel.localVideoTrack.value?.let { localTrack ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(width = 120.dp, height = 160.dp)
-                    .padding(8.dp)
-            ) {
-                VideoView(
-                    context = context,
-                    videoTrack = localTrack,
-                    modifier = Modifier.fillMaxSize()
-                )
+        if (chatViewModel.localVideoTrack.value != null) {
+            chatViewModel.localVideoTrack.value?.let { localTrack ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(width = 120.dp, height = 160.dp)
+                        .padding(8.dp)
+                ) {
+                    VideoView(
+                        context = context,
+                        videoTrack = localTrack,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 

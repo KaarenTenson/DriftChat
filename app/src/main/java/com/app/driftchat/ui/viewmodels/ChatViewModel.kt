@@ -64,12 +64,12 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             return
         }
 
-        webRtcInitialized = true
         Log.d("web", "initWebRTC start")
 
         val firebaseSignal = FirebaseSign(db, userID!!)
 
         if (webRtcClient == null) {
+            webRtcInitialized = true
             webRtcClient = NSWebRTCClient(context, firebaseSignal).apply {
                 // Listen for remote track first
                 setOnRemoteTrackListener { track ->
@@ -221,7 +221,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                         setIsWaiting(false)
 
                         messageListenerRegistration?.remove()
-                        cleanMessages()
+                        reset();
                         addUserToWaitList(userData)
 
                         leftChatListenerRegistration?.remove()
@@ -370,9 +370,33 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messages.addAll(listOf("", "", "Welcome to the chat!"))
     }
 
+    fun reset() {
+        localVideoTrack.value = null
+        remoteVideoTrack.value = null
+        //for showing user errors from firestore
+        errorMsg.value ="";
+        //when user is waiting for connection from another user
+        isWaitingForOtherPerson.value = false;
+        userID = null
+        roomID = null
+        timeSinceLast = 0L
+
+        lastLeftChatCall = 0L
+        timeSinceLastRemoval = 0L
+        chatRoomListenerRegistration = null
+        messageListenerRegistration = null
+
+        leftChatListenerRegistration = null
+        repo = null
+        webRtcClient  = null
+        webRtcInitialized = false
+        cleanMessages()
+    }
+
     override fun onCleared() {
         setIsWaiting(false)
         super.onCleared()
+        reset();
         chatRoomListenerRegistration?.remove()
         messageListenerRegistration?.remove()
         leftChatListenerRegistration?.remove()
