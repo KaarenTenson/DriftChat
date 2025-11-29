@@ -2,18 +2,16 @@ package com.app.driftchat.client
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.provider.CallLog
 import android.util.Log
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
 import org.webrtc.Camera2Enumerator
 import org.webrtc.CameraVideoCapturer
-import org.webrtc.EglBase
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
-import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
-import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
@@ -21,7 +19,9 @@ import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
 import org.webrtc.RtpTransceiver
 import org.webrtc.DataChannel
+import org.webrtc.Logging
 import org.webrtc.MediaStreamTrack
+import org.webrtc.PeerConnection
 
 class NSWebRTCClient(
     private val context: Context,
@@ -55,7 +55,7 @@ class NSWebRTCClient(
     /**
      * Initialize PeerConnectionFactory and local media. Must be called on main thread.
      */
-    fun initWebrtcClient(username: String) {
+    fun  initWebrtcClient(username: String) {
         Log.d(TAG, "initWebrtcClient() start username=$username")
 
         if (peerConnectionFactory != null) {
@@ -65,17 +65,20 @@ class NSWebRTCClient(
 
         // 1) SurfaceTextureHelper
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
-
+        //Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE)
         // 2) Initialize PeerConnectionFactory
         val options = PeerConnectionFactory.InitializationOptions.builder(context.applicationContext)
             .setEnableInternalTracer(true)
             .createInitializationOptions()
+
         PeerConnectionFactory.initialize(options)
         peerConnectionFactory = PeerConnectionFactory.builder().createPeerConnectionFactory()
 
         // 3) Audio
         localAudioSource = peerConnectionFactory!!.createAudioSource(MediaConstraints())
         localAudioTrack = peerConnectionFactory!!.createAudioTrack("AUDIO_$username", localAudioSource)
+        localAudioTrack!!.setEnabled(true)
+
 
         // 4) Video
         cameraCapturer = createCameraCapturer()
@@ -113,12 +116,12 @@ class NSWebRTCClient(
     fun call(target: String) {
         Log.d(TAG, "call() target=$target")
         currentTarget = target
-        createPeerConnectionIfNeeded(target)
-
-        val constraints = MediaConstraints().apply {
+        /**val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
-        }
+        }**/
+
+        createPeerConnectionIfNeeded(target)
 
         peerConnection?.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
@@ -141,7 +144,7 @@ class NSWebRTCClient(
             override fun onCreateFailure(error: String?) {
                 Log.e(TAG, "call: createOffer failed: $error")
             }
-        }, constraints)
+        }, MediaConstraints())
     }
 
     /**
@@ -150,34 +153,32 @@ class NSWebRTCClient(
     fun answer(target: String) {
         Log.d(TAG, "answer() target=$target")
         currentTarget = target
-        createPeerConnectionIfNeeded(target)
-
-        val constraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+        Log.w(TAG, "answer: local tracks ${localAudioTrack!!.enabled()}")
+        if (localVideoTrack == null || localAudioTrack == null) {
+            Log.w(TAG, "answer: local tracks not ready yet, delaying answer creation")
+            Handler(Looper.getMainLooper()).postDelayed({ answer(target) }, 100)
+            return
         }
 
+        /**val constraints = MediaConstraints().apply {
+
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+        }**/
+
+
+
+
         peerConnection?.createAnswer(object : SimpleSdpObserver() {
-            override fun onCreateSuccess(answer: SessionDescription?) {
-                if (answer == null) {
-                    Log.e(TAG, "answer: onCreateSuccess answer==null")
-                    return
-                }
-                Log.d(TAG, "answer: created answer, setting local desc")
+            override fun onCreateSuccess(sdp: SessionDescription?) {
+                if (sdp == null) return
                 peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
                     override fun onSetSuccess() {
-                        Log.d(TAG, "answer: local desc set -> sending answer")
-                        signaling.sendAnswer(target, answer.description)
+                        signaling.sendAnswer(target, sdp.description)
                     }
-                    override fun onSetFailure(error: String?) {
-                        Log.e(TAG, "answer: setLocalDescription failed: $error")
-                    }
-                }, answer)
+                }, sdp)
             }
-            override fun onCreateFailure(error: String?) {
-                Log.e(TAG, "answer: createAnswer failed: $error")
-            }
-        }, constraints)
+        }, MediaConstraints())
     }
 
     /**
@@ -321,26 +322,33 @@ class NSWebRTCClient(
                 } else {
                     Log.d(TAG, "Ignoring non-video track")
                 }
+
             }
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) { Log.d(TAG, "onIceCandidatesRemoved: ${candidates?.size ?: 0}") }
         })
 
         // Attach local tracks using addTrack() (Unified Plan)
         try {
-            // Correct UnifiedPlan: declare transceivers *without linking tracks*
-            val audioTransceiver = peerConnection!!.addTransceiver(
-                MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO
-            )
-            audioTransceiver.sender.setTrack(localAudioTrack, true)
 
-            val videoTransceiver = peerConnection!!.addTransceiver(
-                MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
+            // 1. Audio Transceiver
+            val audioInit = RtpTransceiver.RtpTransceiverInit(
+                RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
+                listOf() // No stream IDs needed since we are passing a track
             )
-            videoTransceiver.sender.setTrack(localVideoTrack, true)
+            // Add the transceiver and specify the local track and direction in one go
+            peerConnection!!.addTransceiver(localAudioTrack, audioInit)
 
-            Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers + tracks")
+            // 2. Video Transceiver
+            val videoInit = RtpTransceiver.RtpTransceiverInit(
+                RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
+                listOf() // No stream IDs needed
+            )
+            // Add the transceiver and specify the local track and direction in one go
+            peerConnection!!.addTransceiver(localVideoTrack, videoInit)
+
+            Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers with tracks")
         } catch (e: Exception) {
-            Log.e(TAG, "createPeerConnectionIfNeeded: addTrack failed: ${e.message}")
+            Log.e(TAG, "createPeerConnectionIfNeeded: addTransceiver failed: ${e.message}")
         }
     }
 
@@ -368,7 +376,8 @@ class NSWebRTCClient(
     // Simple SdpObserver with default no-op implementations
     open class SimpleSdpObserver : SdpObserver {
         override fun onCreateSuccess(sdp: SessionDescription?) {}
-        override fun onSetSuccess() {}
+        override fun onSetSuccess() {
+        }
         override fun onCreateFailure(error: String?) { Log.e("s", "SdpObserver onCreateFailure: $error") }
         override fun onSetFailure(error: String?) { Log.e("s", "SdpObserver onSetFailure: $error") }
     }
