@@ -78,10 +78,6 @@ class NSWebRTCClient(
     fun  initWebrtcClient(username: String) {
         Log.d(TAG, "initWebrtcClient() start username=$username")
 
-        if (peerConnectionFactory != null) {
-            Log.w(TAG, "initWebrtcClient: already initialized, skipping")
-            return
-        }
 
         // 1) SurfaceTextureHelper
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
