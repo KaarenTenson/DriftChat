@@ -165,7 +165,6 @@ class NSWebRTCClient(
     fun answer(target: String) {
         Log.d(TAG, "answer() target=$target")
         currentTarget = target
-        Log.w(TAG, "answer: local tracks ${localAudioTrack!!.enabled()}")
         if (localVideoTrack == null || localAudioTrack == null) {
             Log.w(TAG, "answer: local tracks not ready yet, delaying answer creation")
             Handler(Looper.getMainLooper()).postDelayed({ answer(target) }, 100)
