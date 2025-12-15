@@ -38,6 +38,7 @@ class NSWebRTCClient(
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
     private var cameraCapturer: CameraVideoCapturer? = null
 
+    private var isInitialized = false;
     private val peerConnectionFactory by lazy {createPeerConnectionFactory()}
     private var peerConnection: PeerConnection? = null
 
@@ -63,11 +64,16 @@ class NSWebRTCClient(
      * Initialize PeerConnectionFactory and local media. Must be called on main thread.
      */
     fun createPeerConnectionFactory(): PeerConnectionFactory {
+        if (isInitialized) {
+            return peerConnectionFactory
+        }
+        Log.d(TAG, "createPeerConnectionFactory()")
         val options = PeerConnectionFactory.InitializationOptions.builder(context.applicationContext)
             .setEnableInternalTracer(true).setFieldTrials("WebRTC-H264HighProfile/Enabled/")
             .createInitializationOptions()
 
         PeerConnectionFactory.initialize(options)
+        isInitialized = true
         return PeerConnectionFactory.builder().setVideoDecoderFactory(
             DefaultVideoDecoderFactory(eglBase.eglBaseContext)).setVideoEncoderFactory(
             DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true)
