@@ -19,6 +19,9 @@ import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
 import org.webrtc.RtpTransceiver
 import org.webrtc.DataChannel
+import org.webrtc.DefaultVideoDecoderFactory
+import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.EglBase
 import org.webrtc.Logging
 import org.webrtc.MediaStreamTrack
 import org.webrtc.PeerConnection
@@ -68,11 +71,15 @@ class NSWebRTCClient(
         //Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE)
         // 2) Initialize PeerConnectionFactory
         val options = PeerConnectionFactory.InitializationOptions.builder(context.applicationContext)
-            .setEnableInternalTracer(true)
+            .setEnableInternalTracer(true).setFieldTrials("WebRTC-H264HighProfile/Enabled/")
             .createInitializationOptions()
 
         PeerConnectionFactory.initialize(options)
-        peerConnectionFactory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+        peerConnectionFactory = PeerConnectionFactory.builder().setVideoDecoderFactory(
+            DefaultVideoDecoderFactory(eglBase.eglBaseContext)).setVideoEncoderFactory(
+            DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true)
+        ).setOptions(PeerConnectionFactory.Options().apply{disableNetworkMonitor = false
+            disableEncryption = false}).createPeerConnectionFactory()
 
         // 3) Audio
         localAudioSource = peerConnectionFactory!!.createAudioSource(MediaConstraints())
