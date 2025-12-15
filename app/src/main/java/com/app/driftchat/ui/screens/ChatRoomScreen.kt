@@ -1,6 +1,10 @@
 package com.app.driftchat.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +37,9 @@ import com.app.driftchat.ui.components.UserCam
 import com.app.driftchat.ui.viewmodels.ChatViewModel
 import com.app.driftchat.ui.viewmodels.UserDataViewModel
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.app.driftchat.ui.components.VideoView
 
 @Composable
@@ -41,13 +47,35 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
     // screen
     val userData = userViewModel.data.collectAsState().value
     val context = LocalContext.current
+    var permissionsHandled by remember { mutableStateOf(false) }
+    var checkPerimission by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(userData?.id) {
         chatViewModel.cleanMessages()
         chatViewModel.addUserToWaitList(userData)
         chatViewModel.waitForUserID()
+        checkPerimission = true
         Log.d("web","siin")
-        chatViewModel.initWebRTC(context, userData?.name ?: "User")
+
+
+    }
+
+    if (checkPerimission && !permissionsHandled && userData != null) {
+        RequestCallPermissions(
+            onGranted = {
+                permissionsHandled = true
+                chatViewModel.initWebRTC(
+                    context,
+                    userData.name ?: "User"
+                )
+            },
+            onDenied = {
+                permissionsHandled = true
+                chatViewModel.errorMsg.value =
+                    "Camera and microphone permissions are required"
+            }
+        )
     }
 
 
@@ -189,5 +217,41 @@ fun LoadingBox() {
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 80.dp)
         )
+    }
+}
+
+@Composable
+fun RequestCallPermissions(
+    onGranted: () -> Unit,
+    onDenied: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) onGranted() else onDenied()
+    }
+
+    LaunchedEffect(Unit) {
+        val cameraGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val audioGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!cameraGranted || !audioGranted) {
+            launcher.launch(
+                arrayOf(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.RECORD_AUDIO
+                )
+            )
+        } else {
+            onGranted()
+        }
     }
 }
