@@ -1,6 +1,8 @@
 package com.app.driftchat.client
 
 import android.content.ContentValues.TAG
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import kotlinx.coroutines.flow.*
 
@@ -21,10 +23,13 @@ class WebRtcRepository(
 
                 "Offer" -> {
                     webRtcClient.currentTarget = event.caller
-
                     event.sdp?.let { sdp ->
-                        webRtcClient.onRemoteSessionReceived(sdp, {
-                            webRtcClient.answer(event.caller)
+                        webRtcClient.onRemoteSessionReceived(sdp, onComplete = {
+                            // **Add a small post-delay to give WebRTC stack time to process m-lines.**
+                            // This is a common, though imperfect, hack.
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                webRtcClient.answer(target = event.caller)
+                            }, 100) // e.g., 50ms
                         })
                     }
                 }
