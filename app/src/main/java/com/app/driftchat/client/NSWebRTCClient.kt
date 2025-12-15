@@ -29,6 +29,8 @@ class NSWebRTCClient(
 ) {
     private val TAG = "NSWebRTCClient"
 
+    private var localTracksAdded = false
+
     // --- native / long-lived resources (keep references) ---
     private val eglBase = EglBaseProvider.eglBase
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
@@ -94,7 +96,7 @@ class NSWebRTCClient(
         try {
             // Use higher FPS/resolution for better preview
             Handler(Looper.getMainLooper()).post {
-                cameraCapturer?.startCapture(640, 480, 30)
+                cameraCapturer?.startCapture(640, 480, 10)
             }
             Log.d(TAG, "Camera started successfully")
         } catch (e: Exception) {
@@ -110,6 +112,24 @@ class NSWebRTCClient(
         Log.d(TAG, "initWebrtcClient() done - audio=${localAudioTrack != null}, video=${localVideoTrack != null}")
     }
 
+    private fun ensureLocalTracksAdded() {
+        val pc = peerConnection ?: return
+        if (localTracksAdded) return
+
+        val a = localAudioTrack
+        val v = localVideoTrack
+        if (a == null || v == null) {
+            Log.w(TAG, "ensureLocalTracksAdded: tracks not ready a=$a v=$v")
+            return
+        }
+
+        pc.addTrack(a, listOf("stream"))
+        pc.addTrack(v, listOf("stream"))
+        localTracksAdded = true
+
+        Log.d(TAG, "Local tracks added (audio+video)")
+    }
+
     /**
      * Start call to target - will create PeerConnection if needed and createOffer
      */
@@ -122,6 +142,7 @@ class NSWebRTCClient(
         }**/
 
         createPeerConnectionIfNeeded(target)
+        ensureLocalTracksAdded()
 
         peerConnection?.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
@@ -167,9 +188,10 @@ class NSWebRTCClient(
         }**/
 
 
-
-
+        createPeerConnectionIfNeeded(target)
+        ensureLocalTracksAdded()
         peerConnection?.createAnswer(object : SimpleSdpObserver() {
+
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 if (sdp == null) return
                 peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
@@ -336,7 +358,6 @@ class NSWebRTCClient(
                 listOf() // No stream IDs needed since we are passing a track
             )
             // Add the transceiver and specify the local track and direction in one go
-            peerConnection!!.addTransceiver(localAudioTrack, audioInit)
 
             // 2. Video Transceiver
             val videoInit = RtpTransceiver.RtpTransceiverInit(
@@ -344,7 +365,6 @@ class NSWebRTCClient(
                 listOf() // No stream IDs needed
             )
             // Add the transceiver and specify the local track and direction in one go
-            peerConnection!!.addTransceiver(localVideoTrack, videoInit)
 
             Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers with tracks")
         } catch (e: Exception) {
