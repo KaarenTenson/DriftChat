@@ -25,6 +25,7 @@ import org.webrtc.EglBase
 import org.webrtc.Logging
 import org.webrtc.MediaStreamTrack
 import org.webrtc.PeerConnection
+import java.util.UUID
 
 class NSWebRTCClient(
     private val context: Context,
@@ -37,16 +38,19 @@ class NSWebRTCClient(
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
     private var cameraCapturer: CameraVideoCapturer? = null
 
-    private var peerConnectionFactory: PeerConnectionFactory? = null
+    private val peerConnectionFactory by lazy {createPeerConnectionFactory()}
     private var peerConnection: PeerConnection? = null
 
-    private var localVideoSource: VideoSource? = null
-    private var localAudioSource: AudioSource? = null
+    private val localVideoSource by lazy {peerConnectionFactory?.createVideoSource(false)}
+    private val localAudioSource by lazy {peerConnectionFactory?.createAudioSource(MediaConstraints())}
+
     private var localVideoTrack: VideoTrack? = null
     private var localAudioTrack: AudioTrack? = null
 
+
     private var remoteTrackListener: ((VideoTrack) -> Unit)? = null
     public var currentTarget: String? = null
+    private var localStream: MediaStream? = null
 
     // --- Public API ---------------------------------------------------------
     fun setOnRemoteTrackListener(callback: (VideoTrack) -> Unit) {
@@ -58,6 +62,19 @@ class NSWebRTCClient(
     /**
      * Initialize PeerConnectionFactory and local media. Must be called on main thread.
      */
+    fun createPeerConnectionFactory(): PeerConnectionFactory {
+        val options = PeerConnectionFactory.InitializationOptions.builder(context.applicationContext)
+            .setEnableInternalTracer(true).setFieldTrials("WebRTC-H264HighProfile/Enabled/")
+            .createInitializationOptions()
+
+        PeerConnectionFactory.initialize(options)
+        return PeerConnectionFactory.builder().setVideoDecoderFactory(
+            DefaultVideoDecoderFactory(eglBase.eglBaseContext)).setVideoEncoderFactory(
+            DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true)
+        ).setOptions(PeerConnectionFactory.Options().apply{disableNetworkMonitor = false
+            disableEncryption = false}).createPeerConnectionFactory()
+
+    }
     fun  initWebrtcClient(username: String) {
         Log.d(TAG, "initWebrtcClient() start username=$username")
 
@@ -70,20 +87,9 @@ class NSWebRTCClient(
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
         //Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE)
         // 2) Initialize PeerConnectionFactory
-        val options = PeerConnectionFactory.InitializationOptions.builder(context.applicationContext)
-            .setEnableInternalTracer(true).setFieldTrials("WebRTC-H264HighProfile/Enabled/")
-            .createInitializationOptions()
-
-        PeerConnectionFactory.initialize(options)
-        peerConnectionFactory = PeerConnectionFactory.builder().setVideoDecoderFactory(
-            DefaultVideoDecoderFactory(eglBase.eglBaseContext)).setVideoEncoderFactory(
-            DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true)
-        ).setOptions(PeerConnectionFactory.Options().apply{disableNetworkMonitor = false
-            disableEncryption = false}).createPeerConnectionFactory()
 
         // 3) Audio
-        localAudioSource = peerConnectionFactory!!.createAudioSource(MediaConstraints())
-        localAudioTrack = peerConnectionFactory!!.createAudioTrack("AUDIO_$username", localAudioSource)
+        localAudioTrack = peerConnectionFactory.createAudioTrack("AUDIO_$username", localAudioSource)
         localAudioTrack!!.setEnabled(true)
 
 
@@ -95,7 +101,6 @@ class NSWebRTCClient(
         }
 
         // Create video source and track
-        localVideoSource = peerConnectionFactory!!.createVideoSource(cameraCapturer!!.isScreencast)
         cameraCapturer!!.initialize(surfaceTextureHelper, context, localVideoSource!!.capturerObserver)
 
         try {
@@ -250,14 +255,12 @@ class NSWebRTCClient(
         } catch (e: Exception) {
             Log.w(TAG, "dispose: localVideoSource.dispose failed: ${e.message}")
         }
-        localVideoSource = null
 
         try {
             localAudioSource?.dispose()
         } catch (e: Exception) {
             Log.w(TAG, "dispose: localAudioSource.dispose failed: ${e.message}")
         }
-        localAudioSource = null
 
         try {
             peerConnection?.dispose()
@@ -271,8 +274,6 @@ class NSWebRTCClient(
         } catch (e: Exception) {
             Log.w(TAG, "dispose: peerConnectionFactory.dispose failed: ${e.message}")
         }
-        peerConnectionFactory = null
-
         try {
             surfaceTextureHelper?.dispose()
         } catch (e: Exception) {
@@ -309,7 +310,12 @@ class NSWebRTCClient(
                 candidate?.let { signaling.sendIceCandidate(target ?: currentTarget!!, it) }
             }
 
-            override fun onAddStream(stream: MediaStream?) { Log.d(TAG, "onAddStream: $stream") }
+            override fun onAddStream(stream: MediaStream?) {
+                Log.d(TAG, "onAddStream: $stream")
+                if (stream != null) {
+                    remoteTrackListener?.invoke(stream.videoTracks[0])
+                }
+            }
             override fun onDataChannel(dc: DataChannel?) { Log.d(TAG, "onDataChannel") }
             override fun onIceConnectionReceivingChange(p0: Boolean) { Log.d(TAG, "onIceConnectionReceivingChange: $p0") }
             override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState?) { Log.d(TAG, "onIceConnectionChange: $newState") }
@@ -331,27 +337,19 @@ class NSWebRTCClient(
                 }
 
             }
+
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) { Log.d(TAG, "onIceCandidatesRemoved: ${candidates?.size ?: 0}") }
         })
 
         // Attach local tracks using addTrack() (Unified Plan)
         try {
+            localStream = peerConnectionFactory.createLocalMediaStream(UUID.randomUUID().toString())
+            localStream?.addTrack(localVideoTrack)
+            localStream?.addTrack(localAudioTrack)
+            peerConnection?.addStream(localStream);
 
             // 1. Audio Transceiver
-            val audioInit = RtpTransceiver.RtpTransceiverInit(
-                RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
-                listOf() // No stream IDs needed since we are passing a track
-            )
-            // Add the transceiver and specify the local track and direction in one go
-            peerConnection!!.addTransceiver(localAudioTrack, audioInit)
 
-            // 2. Video Transceiver
-            val videoInit = RtpTransceiver.RtpTransceiverInit(
-                RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
-                listOf() // No stream IDs needed
-            )
-            // Add the transceiver and specify the local track and direction in one go
-            peerConnection!!.addTransceiver(localVideoTrack, videoInit)
 
             Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers with tracks")
         } catch (e: Exception) {
