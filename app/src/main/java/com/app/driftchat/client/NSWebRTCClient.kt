@@ -77,7 +77,9 @@ class NSWebRTCClient(
     }
     fun  initWebrtcClient(username: String) {
         Log.d(TAG, "initWebrtcClient() start username=$username")
-
+        if (localVideoTrack != null || localAudioTrack != null) {
+            return
+        }
 
         // 1) SurfaceTextureHelper
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
