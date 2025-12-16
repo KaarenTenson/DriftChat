@@ -21,6 +21,8 @@ import javax.inject.Inject
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import org.webrtc.VideoTrack
+import android.os.Handler
+import android.os.Looper
 
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
@@ -74,10 +76,11 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             webRtcClient = NSWebRTCClient(context, firebaseSignal).apply {
                 // Listen for remote track first
                 setOnRemoteTrackListener { track ->
-                    Log.d("vid", "Remote VideoTrack received: id=${track.id()}, enabled=${track.enabled()}")
-                    remoteVideoTrack.value = track
+                    Handler(Looper.getMainLooper()).post {
+                        Log.d("vid", "Remote VideoTrack received: id=${track.id()}, enabled=${track.enabled()}")
+                        remoteVideoTrack.value = track
+                    }
                 }
-
                 initWebrtcClient(username)
 
                 val localTrack = getLocalVideoTrack()
