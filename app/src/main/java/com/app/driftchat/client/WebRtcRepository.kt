@@ -1,14 +1,14 @@
 package com.app.driftchat.client
 
-import android.content.ContentValues.TAG
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import org.webrtc.SessionDescription
+
 
 class WebRtcRepository(
     private val firebaseSignaling: FirebaseSignaling,
-    public val webRtcClient: NSWebRTCClient
+    private val webRtcClient: NSWebRTCClient
 ) {
     private val _incomingCallEvents = MutableSharedFlow<String>()
     val incomingCallEvents: SharedFlow<String> = _incomingCallEvents
@@ -17,45 +17,49 @@ class WebRtcRepository(
     val callEndedEvents: SharedFlow<Unit> = _callEndedEvents
 
     fun init(username: String) {
-        Log.d("webr","999999")
+        Log.d("webr", "init()")
         firebaseSignaling.listenForEvents { event ->
             when (event.type) {
 
                 "Offer" -> {
-                    webRtcClient.currentTarget = event.caller
-                    event.sdp?.let { sdp ->
-                        webRtcClient.onRemoteSessionReceived(sdp, onComplete = {
-                            // **Add a small post-delay to give WebRTC stack time to process m-lines.**
-                            // This is a common, though imperfect, hack.
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                webRtcClient.answer(target = event.caller)
-                            }, 100) // e.g., 50ms
-                        })
-                    }
+                    val from = event.caller ?: return@listenForEvents
+                    val desc = event.sdp ?: return@listenForEvents
+
+                    webRtcClient.currentTarget = from
+
+                    webRtcClient.onRemoteSessionReceived(
+                        type = SessionDescription.Type.OFFER,
+                        sdp = desc.description,
+                        onComplete = { webRtcClient.answer(from) }
+                    )
                 }
 
                 "Answer" -> {
-                    if (event.caller == webRtcClient.currentTarget) {
-                        // Only caller should apply answer
-                        event.sdp?.let { sdp -> webRtcClient.onRemoteSessionReceived(sdp) }
+                    val from = event.caller ?: return@listenForEvents
+                    val desc = event.sdp ?: return@listenForEvents
+
+                    if (from == webRtcClient.currentTarget) {
+                        webRtcClient.onRemoteSessionReceived(
+                            type = SessionDescription.Type.ANSWER,
+                            sdp = desc.description
+                        )
                     } else {
-                        Log.d("WEBRTC", "Ignoring self-generated answer")
+                        Log.d("WEBRTC", "Ignoring answer from=$from currentTarget=${webRtcClient.currentTarget}")
                     }
                 }
 
                 "IceCandidate" -> {
                     event.iceCandidate?.let { webRtcClient.addIceCandidateToPeer(it) }
                 }
+
                 "EndCall" -> _callEndedEvents.tryEmit(Unit)
             }
         }
     }
 
     fun startCall(target: String) {
-        Log.d("WEB", "startinc chat Leftchat event — triggered by current user")
-        Log.d("WEB",target)
+        webRtcClient.currentTarget = target
         firebaseSignaling.sendStartCall(target)
-
         webRtcClient.call(target)
     }
 

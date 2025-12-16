@@ -32,7 +32,8 @@ class NSWebRTCClient(
     private val signaling: FirebaseSignaling
 ) {
     private val TAG = "NSWebRTCClient"
-
+    private var localTracksAdded = false
+    private var streamId: String? = null
     // --- native / long-lived resources (keep references) ---
     private val eglBase = EglBaseProvider.eglBase
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
@@ -47,11 +48,12 @@ class NSWebRTCClient(
 
     private var localVideoTrack: VideoTrack? = null
     private var localAudioTrack: AudioTrack? = null
+    private val pendingIce = mutableListOf<IceCandidate>()
+    @Volatile private var remoteSdpSet = false
 
 
     private var remoteTrackListener: ((VideoTrack) -> Unit)? = null
     public var currentTarget: String? = null
-    private var localStream: MediaStream? = null
 
     // --- Public API ---------------------------------------------------------
     fun setOnRemoteTrackListener(callback: (VideoTrack) -> Unit) {
@@ -59,7 +61,31 @@ class NSWebRTCClient(
     }
 
     fun getLocalVideoTrack(): VideoTrack? = localVideoTrack
+    private fun ensureLocalTracksAdded() {
+        val pc = peerConnection ?: return
+        if (localTracksAdded) return
 
+        val video = localVideoTrack ?: run {
+            Log.w(TAG, "ensureLocalTracksAdded: video track null")
+            return
+        }
+        val audio = localAudioTrack ?: run {
+            Log.w(TAG, "ensureLocalTracksAdded: audio track null")
+            return
+        }
+
+        if (streamId == null) streamId = "stream-${UUID.randomUUID()}"
+        val sid = streamId!!
+
+        try {
+            pc.addTrack(video, listOf(sid))
+            pc.addTrack(audio, listOf(sid))
+            localTracksAdded = true
+            Log.d(TAG, "ensureLocalTracksAdded: ✅ added local tracks to PeerConnection")
+        } catch (e: Exception) {
+            Log.e(TAG, "ensureLocalTracksAdded: addTrack failed: ${e.message}", e)
+        }
+    }
     /**
      * Initialize PeerConnectionFactory and local media. Must be called on main thread.
      */
@@ -110,7 +136,7 @@ class NSWebRTCClient(
         try {
             // Use higher FPS/resolution for better preview
             Handler(Looper.getMainLooper()).post {
-                cameraCapturer?.startCapture(640, 480, 30)
+                cameraCapturer?.startCapture(640, 480, 10)
             }
             Log.d(TAG, "Camera started successfully")
         } catch (e: Exception) {
@@ -132,12 +158,21 @@ class NSWebRTCClient(
     fun call(target: String) {
         Log.d(TAG, "call() target=$target")
         currentTarget = target
-        /**val constraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
-        }**/
+
+        // Wait until local tracks exist
+        if (localVideoTrack == null || localAudioTrack == null) {
+            Log.w(TAG, "call(): local tracks not ready yet, retrying in 100ms")
+            Handler(Looper.getMainLooper()).postDelayed({ call(target) }, 100)
+            return
+        }
 
         createPeerConnectionIfNeeded(target)
+        ensureLocalTracksAdded()
+
+        val constraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+        }
 
         peerConnection?.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
@@ -145,12 +180,14 @@ class NSWebRTCClient(
                     Log.e(TAG, "call: onCreateSuccess sdp==null")
                     return
                 }
-                Log.d(TAG, "call: created offer, setting local desc")
+
+                Log.d(TAG, "call: created offer len=${sdp.description.length}, setting local desc")
                 peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
                     override fun onSetSuccess() {
-                        Log.d(TAG, "call: local desc set -> sending offer to signaling")
+                        Log.d(TAG, "call: local desc set -> sending offer")
                         signaling.sendOffer(target, sdp.description)
                     }
+
                     override fun onSetFailure(error: String?) {
                         Log.e(TAG, "call: setLocalDescription failed: $error")
                     }
@@ -160,8 +197,9 @@ class NSWebRTCClient(
             override fun onCreateFailure(error: String?) {
                 Log.e(TAG, "call: createOffer failed: $error")
             }
-        }, MediaConstraints())
+        }, constraints)
     }
+
 
     /**
      * Answer remote offer (target is the caller id)
@@ -169,55 +207,91 @@ class NSWebRTCClient(
     fun answer(target: String) {
         Log.d(TAG, "answer() target=$target")
         currentTarget = target
+
         if (localVideoTrack == null || localAudioTrack == null) {
-            Log.w(TAG, "answer: local tracks not ready yet, delaying answer creation")
+            Log.w(TAG, "answer(): local tracks not ready yet, retrying in 100ms")
             Handler(Looper.getMainLooper()).postDelayed({ answer(target) }, 100)
             return
         }
 
-        /**val constraints = MediaConstraints().apply {
+        createPeerConnectionIfNeeded(target)
+        ensureLocalTracksAdded()
 
+        val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
-        }**/
-
-
-
+        }
 
         peerConnection?.createAnswer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 if (sdp == null) return
-                peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
-                    override fun onSetSuccess() {
-                        signaling.sendAnswer(target, sdp.description)
-                    }
-                }, sdp)
+
+                // ✅ recreate a fresh SessionDescription (avoids native "NULL" issue)
+                val localDesc = SessionDescription(sdp.type, sdp.description)
+
+                // ✅ setLocalDescription on MAIN thread
+                Handler(Looper.getMainLooper()).post {
+                    peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
+                        override fun onSetSuccess() {
+                            Log.d(TAG, "answer: local desc set -> sending answer")
+                            signaling.sendAnswer(target, localDesc.description)
+                        }
+
+                        override fun onSetFailure(error: String?) {
+                            Log.e(TAG, "answer: setLocalDescription failed: $error")
+                        }
+                    }, localDesc)
+                }
             }
-        }, MediaConstraints())
+
+            override fun onCreateFailure(error: String?) {
+                Log.e(TAG, "answer: createAnswer failed: $error")
+            }
+        }, constraints)
     }
+
 
     /**
      * Set remote SDP (offer or answer)
      */
-    fun onRemoteSessionReceived(sdp: SessionDescription, onComplete: (() -> Unit)? = null) {
-        Log.d(TAG, "onRemoteSessionReceived: type=${sdp.type}")
+
+    fun onRemoteSessionReceived(
+        type: SessionDescription.Type,
+        sdp: String,
+        onComplete: (() -> Unit)? = null
+    ) {
+        Log.d(TAG, "onRemoteSessionReceived: type=$type")
         createPeerConnectionIfNeeded(currentTarget)
 
+        val desc = SessionDescription(type, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote SDP set successfully")
+                remoteSdpSet = true
+
+                // flush queued ICE
+                val pc = peerConnection
+                pendingIce.forEach { pc?.addIceCandidate(it) }
+                pendingIce.clear()
+
                 onComplete?.invoke()
             }
 
             override fun onSetFailure(error: String?) {
                 Log.e(TAG, "Failed to set remote SDP: $error")
             }
-        }, sdp)
+        }, desc)
     }
 
+
     fun addIceCandidateToPeer(candidate: IceCandidate) {
-        Log.d(TAG, "addIceCandidateToPeer: mid=${candidate.sdpMid}, idx=${candidate.sdpMLineIndex}")
-        peerConnection?.addIceCandidate(candidate)
+        val pc = peerConnection
+        if (pc?.remoteDescription == null) {
+            pendingIce.add(candidate)
+            Log.d(TAG, "Queued ICE (remote SDP not set yet). pending=${pendingIce.size}")
+            return
+        }
+        pc.addIceCandidate(candidate)
     }
 
     /**
@@ -226,13 +300,12 @@ class NSWebRTCClient(
      */
     fun closeConnection() {
         Log.d(TAG, "closeConnection()")
-        try {
-            peerConnection?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "closeConnection: ${e.message}")
-        }
+        try { peerConnection?.close() } catch (_: Exception) {}
         peerConnection = null
         currentTarget = null
+
+        localTracksAdded = false
+        streamId = null
     }
 
     /**
@@ -304,10 +377,12 @@ class NSWebRTCClient(
 
         val iceServers = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
+
         rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         Log.d(TAG, "createPeerConnectionIfNeeded called. target=$target, currentTarget=$currentTarget, peerConnection=$peerConnection")
 
         peerConnection = peerConnectionFactory!!.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
+
             override fun onIceCandidate(candidate: IceCandidate?) {
                 Log.d(TAG, "onIceCandidate fired: candidate=$candidate, target=$target, currentTarget=$currentTarget")
                 candidate?.let { signaling.sendIceCandidate(target ?: currentTarget!!, it) }
@@ -328,36 +403,20 @@ class NSWebRTCClient(
             override fun onRenegotiationNeeded() { Log.d(TAG, "onRenegotiationNeeded") }
 
             override fun onTrack(transceiver: RtpTransceiver?) {
-                val mediaTrack = transceiver?.receiver?.track()
+                val t = transceiver?.receiver?.track()
+                Log.d(TAG, "🔥 onTrack fired: kind=${t?.kind()}, id=${t?.id()}")
 
-                Log.d(TAG, "🔥 onTrack fired: kind=${mediaTrack?.kind()}, id=${mediaTrack?.id()}")
-
-                if (mediaTrack is VideoTrack) {
-                    Log.d(TAG, "🔥 Remote VIDEO track received")
-                    remoteTrackListener?.invoke(mediaTrack)
-                } else {
-                    Log.d(TAG, "Ignoring non-video track")
+                if (t is VideoTrack) {
+                    Handler(Looper.getMainLooper()).post {
+                        remoteTrackListener?.invoke(t)
+                    }
                 }
-
             }
 
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) { Log.d(TAG, "onIceCandidatesRemoved: ${candidates?.size ?: 0}") }
         })
 
         // Attach local tracks using addTrack() (Unified Plan)
-        try {
-            localStream = peerConnectionFactory.createLocalMediaStream(UUID.randomUUID().toString())
-            localStream?.addTrack(localVideoTrack)
-            localStream?.addTrack(localAudioTrack)
-            peerConnection?.addStream(localStream);
-
-            // 1. Audio Transceiver
-
-
-            Log.d(TAG, "createPeerConnectionIfNeeded: added audio/video transceivers with tracks")
-        } catch (e: Exception) {
-            Log.e(TAG, "createPeerConnectionIfNeeded: addTransceiver failed: ${e.message}")
-        }
     }
 
     private fun createCameraCapturer(): CameraVideoCapturer? {
