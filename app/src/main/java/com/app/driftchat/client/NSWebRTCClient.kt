@@ -176,26 +176,21 @@ class NSWebRTCClient(
 
         peerConnection?.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
-                if (sdp == null) {
-                    Log.e(TAG, "call: onCreateSuccess sdp==null")
-                    return
+                if (sdp == null) return
+
+                val localDesc = SessionDescription(sdp.type, sdp.description)
+
+                Handler(Looper.getMainLooper()).post {
+                    peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
+                        override fun onSetSuccess() {
+                            signaling.sendOffer(target, localDesc.description)
+                        }
+
+                        override fun onSetFailure(error: String?) {
+                            Log.e(TAG, "call: setLocalDescription failed: $error")
+                        }
+                    }, localDesc)
                 }
-
-                Log.d(TAG, "call: created offer len=${sdp.description.length}, setting local desc")
-                peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
-                    override fun onSetSuccess() {
-                        Log.d(TAG, "call: local desc set -> sending offer")
-                        signaling.sendOffer(target, sdp.description)
-                    }
-
-                    override fun onSetFailure(error: String?) {
-                        Log.e(TAG, "call: setLocalDescription failed: $error")
-                    }
-                }, sdp)
-            }
-
-            override fun onCreateFailure(error: String?) {
-                Log.e(TAG, "call: createOffer failed: $error")
             }
         }, constraints)
     }
@@ -303,7 +298,8 @@ class NSWebRTCClient(
         try { peerConnection?.close() } catch (_: Exception) {}
         peerConnection = null
         currentTarget = null
-
+        pendingIce.clear()
+        remoteSdpSet = false
         localTracksAdded = false
         streamId = null
     }
