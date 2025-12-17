@@ -155,24 +155,27 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 )
             }
         }
-
+        if (!chatViewModel.errorMsg.value.isEmpty()) {
+            ErrorBox(chatViewModel.errorMsg.value)
+        } else {
+            if (chatViewModel.isWaitingForOtherPerson.value) {
+                LoadingBox();
+            }
+        }
         // Send message box
         Box(modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = 40.dp, start = 40.dp, end = 40.dp)
         ) {
+
             MessageBox(
                 onSendMessage = { Text -> chatViewModel.sendMessage(Text,userData) },
             )
+
+
         }
     }
-    if (!chatViewModel.errorMsg.value.isEmpty()) {
-        ErrorBox(chatViewModel.errorMsg.value)
-    } else {
-        if (chatViewModel.isWaitingForOtherPerson.value) {
-            LoadingBox();
-        }
-    }
+
 }
 
 
