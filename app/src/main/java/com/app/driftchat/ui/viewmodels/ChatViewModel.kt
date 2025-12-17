@@ -201,7 +201,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         chatRoomHandShakeListenerRegistration?.remove()
 
         chatRoomHandShakeListenerRegistration = db.collection("chatRoomHandShake")
-            .whereArrayContains("roomID", searchID)
+            .whereEqualTo("roomID", searchID)
             .limit(1)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .whereNotEqualTo("userId", userID)
