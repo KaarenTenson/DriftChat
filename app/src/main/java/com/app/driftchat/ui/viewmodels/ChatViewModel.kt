@@ -168,6 +168,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 if (snapshot != null && !snapshot.isEmpty) {
                     for (document in snapshot.documents) {
                       val chatRoomId = document.id
+                      roomID = chatRoomId
                       val members:List<*>? = (document.get("members") as? List<*>?)
                       if (members == null) {
                            continue
@@ -192,16 +193,15 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
 
     fun startHandShakeListener(chatRoomID: String, members: List<*>?, userData: UserData? = null) {
-        val searchID = chatRoomID
 
-        if (searchID.isNullOrBlank()) {
-            Log.w(TAG, "userID null or blank")
+
+        if (chatRoomID.isNullOrBlank()) {
             return
         }
         chatRoomHandShakeListenerRegistration?.remove()
 
         chatRoomHandShakeListenerRegistration = db.collection("chatRoomHandShake")
-            .whereEqualTo("roomID", searchID)
+            .whereEqualTo("roomID", chatRoomID)
             .limit(1)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .whereNotEqualTo("userId", userID)
@@ -222,10 +222,10 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                         Log.d(TAG, "Found chat room: ${document.id}")
                         Log.d(TAG, "Room ${document.id} members: $members")
                         if (members!!.size == 2) {
-                            val other = members.firstOrNull { it != searchID } as? String
+                            val other = members.firstOrNull { it != userID } as? String
                             if (!other.isNullOrBlank()) {
                                 // only initiate call from one side (deterministic)
-                                if (searchID < other) {
+                                if (userID!! < other) {
                                     Log.d(
                                         TAG,
                                         "startChatRoomListener: we are caller, initiating call to $other"
