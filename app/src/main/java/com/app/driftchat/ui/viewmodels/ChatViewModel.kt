@@ -216,7 +216,6 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                     for (document in snapshot.documents) {
                         setIsWaiting(false)
                         errorMsg.value = ""
-                        roomID = document.id
                         startMessageListener()
                         startLeftChatListener(userData)
 
