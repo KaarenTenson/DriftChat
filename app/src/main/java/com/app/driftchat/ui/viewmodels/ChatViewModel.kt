@@ -23,13 +23,14 @@ import com.google.firebase.firestore.Query
 import org.webrtc.VideoTrack
 import android.os.Handler
 import android.os.Looper
-
+import com.app.driftchat.client.FirebaseSignaling
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
 
 @HiltViewModel
 class ChatViewModel @Inject constructor() : ViewModel() {
     val messages = mutableStateListOf<String>()
+    private var firebaseSignal: FirebaseSignaling? = null
     var localVideoTrack = mutableStateOf<VideoTrack?>(null)
     var remoteVideoTrack = mutableStateOf<VideoTrack?>(null)
     //for showing user errors from firestore
@@ -69,11 +70,14 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
         Log.d("web", "initWebRTC start")
 
-        val firebaseSignal = FirebaseSign(db, userID!!)
+        if (firebaseSignal == null) {
+            firebaseSignal = FirebaseSign(db, userID!!)
+        }
+        val signal = firebaseSignal!!
 
         if (webRtcClient == null) {
             webRtcInitialized = true
-            webRtcClient = NSWebRTCClient(context, firebaseSignal).apply {
+            webRtcClient = NSWebRTCClient(context, signal).apply {
                 // Listen for remote track first
                 setOnRemoteTrackListener { track ->
                     Handler(Looper.getMainLooper()).post {
@@ -93,7 +97,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
         }
 
-        repo = WebRtcRepository(firebaseSignal, webRtcClient!!)
+        repo = WebRtcRepository(signal, webRtcClient!!)
         repo?.init(username)
 
         Log.d(TAG, "initWebRTC: completed for user=$userID")
@@ -393,6 +397,28 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     fun reset() {
+        chatRoomListenerRegistration?.remove()
+        chatRoomListenerRegistration = null
+
+        messageListenerRegistration?.remove()
+        messageListenerRegistration = null
+
+        leftChatListenerRegistration?.remove()
+        leftChatListenerRegistration = null
+
+// --- stop signaling listener ---
+        firebaseSignal?.stopListening()
+        firebaseSignal = null
+
+// --- shutdown webrtc cleanly ---
+        repo = null
+        webRtcClient?.closeConnection()
+// If you want a full release (camera + native objects), use:
+        webRtcClient?.dispose()
+        webRtcClient = null
+        webRtcInitialized = false
+
+
         localVideoTrack.value = null
         remoteVideoTrack.value = null
         //for showing user errors from firestore
@@ -405,10 +431,6 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
         lastLeftChatCall = 0L
         timeSinceLastRemoval = 0L
-        chatRoomListenerRegistration = null
-        messageListenerRegistration = null
-
-        leftChatListenerRegistration = null
         repo = null
         webRtcClient  = null
         webRtcInitialized = false
@@ -418,9 +440,6 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     override fun onCleared() {
         setIsWaiting(false)
         super.onCleared()
-        reset();
-        chatRoomListenerRegistration?.remove()
-        messageListenerRegistration?.remove()
-        leftChatListenerRegistration?.remove()
+        reset() // reset now removes listeners + stops signaling + closes webrtc
     }
 }
