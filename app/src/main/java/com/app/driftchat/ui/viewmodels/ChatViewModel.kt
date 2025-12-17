@@ -481,43 +481,31 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     fun reset() {
-        chatRoomListenerRegistration?.remove()
-        chatRoomListenerRegistration = null
-
-        messageListenerRegistration?.remove()
-        messageListenerRegistration = null
-
-        leftChatListenerRegistration?.remove()
-        leftChatListenerRegistration = null
-
-// --- stop signaling listener ---
         firebaseSignal?.stopListening()
         firebaseSignal = null
 
-// --- shutdown webrtc cleanly ---
-        repo = null
-        webRtcClient?.closeConnection()
-// If you want a full release (camera + native objects), use:
-        webRtcClient?.dispose()
-        webRtcClient = null
-        webRtcInitialized = false
-
-
         localVideoTrack.value = null
         remoteVideoTrack.value = null
-        //for showing user errors from firestore
-        errorMsg.value ="";
-        //when user is waiting for connection from another user
-        isWaitingForOtherPerson.value = false;
+
+        webRtcClient?.closeConnection()
+
+        webRtcClient = null
+        webRtcInitialized = false
+        repo = null
+
+        // remove other listeners
+        chatRoomListenerRegistration?.remove(); chatRoomListenerRegistration = null
+        messageListenerRegistration?.remove(); messageListenerRegistration = null
+        leftChatListenerRegistration?.remove(); leftChatListenerRegistration = null
+
+        errorMsg.value = ""
+        isWaitingForOtherPerson.value = false
         userID = null
         roomID = null
         timeSinceLast = 0L
-
         lastLeftChatCall = 0L
         timeSinceLastRemoval = 0L
-        repo = null
-        webRtcClient  = null
-        webRtcInitialized = false
+
         cleanMessages()
     }
 

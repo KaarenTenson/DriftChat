@@ -50,7 +50,7 @@ class NSWebRTCClient(
     private var localAudioTrack: AudioTrack? = null
     private val pendingIce = mutableListOf<IceCandidate>()
     @Volatile private var remoteSdpSet = false
-
+    @Volatile private var closing = false
 
     private var remoteTrackListener: ((VideoTrack) -> Unit)? = null
     public var currentTarget: String? = null
@@ -255,11 +255,13 @@ class NSWebRTCClient(
         sdp: String,
         onComplete: (() -> Unit)? = null
     ) {
-        Log.d(TAG, "onRemoteSessionReceived: type=$type")
+        if (closing) return
         createPeerConnectionIfNeeded(currentTarget)
+        val pc = peerConnection ?: return
+        Log.d(TAG, "onRemoteSessionReceived: type=$type")
 
         val desc = SessionDescription(type, sdp)
-        peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
+        pc.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote SDP set successfully")
                 remoteSdpSet = true
@@ -280,10 +282,10 @@ class NSWebRTCClient(
 
 
     fun addIceCandidateToPeer(candidate: IceCandidate) {
-        val pc = peerConnection
-        if (pc?.remoteDescription == null) {
+        if (closing) return
+        val pc = peerConnection ?: return
+        if (pc.remoteDescription == null) {
             pendingIce.add(candidate)
-            Log.d(TAG, "Queued ICE (remote SDP not set yet). pending=${pendingIce.size}")
             return
         }
         pc.addIceCandidate(candidate)
@@ -294,7 +296,7 @@ class NSWebRTCClient(
      * Call dispose() to fully release native resources.
      */
     fun closeConnection() {
-        Log.d(TAG, "closeConnection()")
+        closing = true
         try { peerConnection?.close() } catch (_: Exception) {}
         peerConnection = null
         currentTarget = null
@@ -353,11 +355,7 @@ class NSWebRTCClient(
         }
         surfaceTextureHelper = null
 
-        try {
-            eglBase.release()
-        } catch (e: Exception) {
-            Log.w(TAG, "dispose: eglBase.release failed: ${e.message}")
-        }
+
     }
 
     // --- Internal helpers --------------------------------------------------
@@ -380,8 +378,13 @@ class NSWebRTCClient(
         peerConnection = peerConnectionFactory!!.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
 
             override fun onIceCandidate(candidate: IceCandidate?) {
-                Log.d(TAG, "onIceCandidate fired: candidate=$candidate, target=$target, currentTarget=$currentTarget")
-                candidate?.let { signaling.sendIceCandidate(target ?: currentTarget!!, it) }
+                if (closing) return
+                val to = target ?: currentTarget
+                if (to.isNullOrBlank()) {
+                    Log.w(TAG, "onIceCandidate: no target/currentTarget, dropping")
+                    return
+                }
+                candidate?.let { signaling.sendIceCandidate(to, it) }
             }
 
             override fun onAddStream(stream: MediaStream?) {
