@@ -20,7 +20,8 @@ import org.webrtc.VideoTrack
 fun VideoView(
     context: Context,
     videoTrack: VideoTrack?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    overlay: Boolean = false
 ) {
     val eglBase = remember { EglBaseProvider.eglBase }
 
@@ -36,6 +37,10 @@ fun VideoView(
                 init(eglBase.eglBaseContext, null)
                 setEnableHardwareScaler(true)
                 setMirror(true)
+                if (overlay) {
+                    setZOrderMediaOverlay(true)
+                    setZOrderOnTop(true)
+                }
             }
         },
         update = { view ->

@@ -95,7 +95,8 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                 VideoView(
                     context = context,
                     videoTrack = remoteTrack,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    overlay=false
                 )
             }
         }
@@ -112,7 +113,8 @@ fun ChatRoom(onSwipeRight: () -> Unit, chatViewModel: ChatViewModel, userViewMod
                     VideoView(
                         context = context,
                         videoTrack = localTrack,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        overlay=true,
                     )
                 }
             }
