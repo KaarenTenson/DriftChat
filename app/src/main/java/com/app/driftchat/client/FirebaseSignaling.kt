@@ -11,10 +11,13 @@ data class SignalingEvent(
 )
 
 interface FirebaseSignaling {
+    fun stopListening()
+    fun sendEndCall(target: String)
     fun listenForEvents(onEvent: (SignalingEvent) -> Unit)
     fun sendOffer(target: String, sdp: String)
     fun sendAnswer(target: String, sdp: String)
     fun sendIceCandidate(target: String, candidate: IceCandidate)
     fun sendEndCall()
     fun getLastCaller(): String
+    fun sendStartCall(target: String)
 }

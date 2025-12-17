@@ -21,6 +21,10 @@ import javax.inject.Inject
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import org.webrtc.VideoTrack
+import android.os.Handler
+import android.os.Looper
+import com.app.driftchat.client.FirebaseSignaling
+import kotlinx.coroutines.delay
 
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
@@ -28,8 +32,9 @@ val db = Firebase.firestore("(default)")
 @HiltViewModel
 class ChatViewModel @Inject constructor() : ViewModel() {
     val messages = mutableStateListOf<String>()
-    var localVideoTrack: VideoTrack? = null
-    var remoteVideoTrack: VideoTrack? = null
+    private var firebaseSignal: FirebaseSignaling? = null
+    var localVideoTrack = mutableStateOf<VideoTrack?>(null)
+    var remoteVideoTrack = mutableStateOf<VideoTrack?>(null)
     //for showing user errors from firestore
     val errorMsg = mutableStateOf<String>("");
     //when user is waiting for connection from another user
@@ -41,14 +46,18 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     private var lastLeftChatCall = 0L
     var timeSinceLastRemoval: Long = 0L
     private var chatRoomListenerRegistration: ListenerRegistration? = null
+    private var chatRoomHandShakeListenerRegistration: ListenerRegistration? = null
     private var messageListenerRegistration: ListenerRegistration? = null
 
     private var leftChatListenerRegistration: ListenerRegistration? = null
     private var repo: WebRtcRepository? = null
+    private var webRtcClient: NSWebRTCClient? = null
+    private var webRtcInitialized = false
     init {
         messages.add("")
         messages.add("")
         messages.add("Welcome to the chat!")
+        startRemoteTrackLogger();
     }
 
     fun initWebRTC(context: Context, username: String) {
@@ -56,14 +65,44 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             Log.w(TAG, "initWebRTC: userID is null - cannot init")
             return
         }
-        val firebaseSignal = FirebaseSign(db, userID!!)
-        repo = WebRtcRepository(firebaseSignal, NSWebRTCClient(context, firebaseSignal))
+
+        if (webRtcInitialized) {
+            Log.d(TAG, "initWebRTC: already initialized, skipping")
+            return
+        }
+
+        Log.d("web", "initWebRTC start")
+
+        if (firebaseSignal == null) {
+            firebaseSignal = FirebaseSign(db, userID!!)
+        }
+        val signal = firebaseSignal!!
+
+        if (webRtcClient == null) {
+            webRtcInitialized = true
+            webRtcClient = NSWebRTCClient(context, signal).apply {
+                // Listen for remote track first
+                setOnRemoteTrackListener { track ->
+                    Handler(Looper.getMainLooper()).post {
+                        Log.d("vid", "Remote VideoTrack received: id=${track.id()}, enabled=${track.enabled()}")
+                        remoteVideoTrack.value = track
+                    }
+                }
+                initWebrtcClient(username)
+
+                val localTrack = getLocalVideoTrack()
+                if (localTrack == null) {
+                    Log.e("vid", "Local video track null after init!")
+                } else {
+                    Log.d("vid", "Local video ready: id=${localTrack.id()}")
+                }
+                localVideoTrack.value = localTrack
+            }
+        }
+
+        repo = WebRtcRepository(signal, webRtcClient!!)
         repo?.init(username)
 
-        localVideoTrack = repo?.webRtcClient?.getLocalVideoTrack()
-        repo?.webRtcClient?.setOnRemoteTrackListener { track ->
-            remoteVideoTrack = track
-        }
         Log.d(TAG, "initWebRTC: completed for user=$userID")
     }
     fun startMessageListener() {
@@ -128,33 +167,87 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
                 if (snapshot != null && !snapshot.isEmpty) {
                     for (document in snapshot.documents) {
-                        setIsWaiting(false)
-                        errorMsg.value = ""
-                        roomID = document.id
-                        startMessageListener()
-                        startLeftChatListener(userData)
+                      val chatRoomId = document.id
+                      val members:List<*>? = (document.get("members") as? List<*>?)
+                      if (members == null) {
+                           continue
+                       }
+                        startHandShakeListener(chatRoomId, members)
+                        makeFireBaseHandShake(chatRoomID = chatRoomId, userID = searchID)
+                        Handler().postDelayed({
 
-                        val members = document.get("members") as? List<*>
-                        Log.d(TAG, "Found chat room: ${document.id}")
-                        Log.d(TAG, "Room ${document.id} members: $members")
-                        if (members != null && members.size == 2) {
-                            val other = members.firstOrNull { it != searchID } as? String
-                            if (!other.isNullOrBlank()) {
-                                // only initiate call from one side (deterministic)
-                                if (searchID < other) {
-                                    Log.d(TAG, "startChatRoomListener: we are caller, initiating call to $other")
-                                    repo?.startCall(other)
-                                } else {
-                                    Log.d(TAG, "startChatRoomListener: waiting for offer from $other")
-                                }
+                            if (isWaitingForOtherPerson.value) {
+                                addUserToWaitList(userData)
                             }
-                        }
+                        }, 2000)
+
                     }
+
                 } else {
                     Log.d(TAG, "No active chat rooms found for userId: $userID")
                 }
             }
     }
+
+
+
+    fun startHandShakeListener(chatRoomID: String, members: List<*>?, userData: UserData? = null) {
+        val searchID = chatRoomID
+
+        if (searchID.isNullOrBlank()) {
+            Log.w(TAG, "userID null or blank")
+            return
+        }
+        chatRoomHandShakeListenerRegistration?.remove()
+
+        chatRoomHandShakeListenerRegistration = db.collection("chatRoomHandShake")
+            .whereEqualTo("roomID", searchID)
+            .limit(1)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .whereNotEqualTo("userId", userID)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    errorMsg.value = "failed to connect to other person";
+                    Log.e(TAG, "Chat room listen failed: ${error.message}", error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && !snapshot.isEmpty) {
+                    for (document in snapshot.documents) {
+                        setIsWaiting(false)
+                        errorMsg.value = ""
+                        startMessageListener()
+                        startLeftChatListener(userData)
+
+                        Log.d(TAG, "Found chat room: ${document.id}")
+                        Log.d(TAG, "Room ${document.id} members: $members")
+                        if (members!!.size == 2) {
+                            val other = members.firstOrNull { it != searchID } as? String
+                            if (!other.isNullOrBlank()) {
+                                // only initiate call from one side (deterministic)
+                                if (searchID < other) {
+                                    Log.d(
+                                        TAG,
+                                        "startChatRoomListener: we are caller, initiating call to $other"
+                                    )
+                                    repo?.startCall(other)
+                                } else {
+                                    Log.d(
+                                        TAG,
+                                        "startChatRoomListener: waiting for offer from $other"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+
+                } else {
+                    Log.d(TAG, "No active chat rooms found for userId: $userID")
+                }
+            }
+    }
+
 
     fun startLeftChatListener(userData: UserData?) {//Starts a listener for collection Leftchat which consists of rooms that have 1 participant
         //If the user is in a room that was added to Leftchat collection they will be added back to the waitlist
@@ -193,7 +286,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                         setIsWaiting(false)
 
                         messageListenerRegistration?.remove()
-                        cleanMessages()
+                        reset();
                         addUserToWaitList(userData)
 
                         leftChatListenerRegistration?.remove()
@@ -211,6 +304,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     private lateinit var nsWebRTCClient: NSWebRTCClient
+
     fun addUserToWaitList(userData: UserData?) {//Adds user to the waitlist so we can connect them  with another participant
         val now = System.currentTimeMillis()
         setIsWaiting(true)
@@ -258,6 +352,32 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Failed to remove waitList entry", e)
+            }
+    }
+
+    fun makeFireBaseHandShake(chatRoomID: String, userID: String) {
+        val now = System.currentTimeMillis()
+        setIsWaiting(true)
+        if (now-timeSinceLast<2000) {
+            Log.d(TAG, "WaitList addition skipped. Already started.")
+            return
+        }
+
+        timeSinceLast = now
+
+        val waitListEntry = hashMapOf<String, Any>(
+            "userId" to userID,
+            "roomID" to chatRoomID,
+            "createdAt" to (System.currentTimeMillis())
+
+        )
+
+        db.collection("chatRoomHandShake")
+            .add(waitListEntry)
+            .addOnFailureListener { e ->
+                setIsWaiting(false)
+                errorMsg.value = "failed to connect to the server"
+                Log.w(TAG, "Error establishing connection", e)
             }
     }
     fun addUserToLeftChat(userData: UserData?) {//Adds room to Leftchat collection which consists of the roomID of the room user left from
@@ -342,11 +462,56 @@ class ChatViewModel @Inject constructor() : ViewModel() {
         messages.addAll(listOf("", "", "Welcome to the chat!"))
     }
 
+    private fun startRemoteTrackLogger() {
+        viewModelScope.launch {
+            while (true) {
+                val track = remoteVideoTrack.value
+                if (track != null) {
+                    Log.d(
+                        "RemoteTrackLogger",
+                        "remoteTrack id=${track.id()}, enabled=${track.enabled()}, state=${track.state()}"
+                    )
+                } else {
+                    Log.d("RemoteTrackLogger", "remoteTrack = null")
+                }
+
+                kotlinx.coroutines.delay(1000) // log every 2 seconds
+            }
+        }
+    }
+
+    fun reset() {
+        firebaseSignal?.stopListening()
+        firebaseSignal = null
+
+        localVideoTrack.value = null
+        remoteVideoTrack.value = null
+
+        webRtcClient?.closeConnection()
+
+        webRtcClient = null
+        webRtcInitialized = false
+        repo = null
+
+        // remove other listeners
+        chatRoomListenerRegistration?.remove(); chatRoomListenerRegistration = null
+        messageListenerRegistration?.remove(); messageListenerRegistration = null
+        leftChatListenerRegistration?.remove(); leftChatListenerRegistration = null
+
+        errorMsg.value = ""
+        isWaitingForOtherPerson.value = false
+        userID = null
+        roomID = null
+        timeSinceLast = 0L
+        lastLeftChatCall = 0L
+        timeSinceLastRemoval = 0L
+
+        cleanMessages()
+    }
+
     override fun onCleared() {
         setIsWaiting(false)
         super.onCleared()
-        chatRoomListenerRegistration?.remove()
-        messageListenerRegistration?.remove()
-        leftChatListenerRegistration?.remove()
+        reset() // reset now removes listeners + stops signaling + closes webrtc
     }
 }
