@@ -24,6 +24,8 @@ import org.webrtc.VideoTrack
 import android.os.Handler
 import android.os.Looper
 import com.app.driftchat.client.FirebaseSignaling
+import kotlinx.coroutines.delay
+
 @SuppressLint("StaticFieldLeak")
 val db = Firebase.firestore("(default)")
 
@@ -44,6 +46,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     private var lastLeftChatCall = 0L
     var timeSinceLastRemoval: Long = 0L
     private var chatRoomListenerRegistration: ListenerRegistration? = null
+    private var chatRoomHandShakeListenerRegistration: ListenerRegistration? = null
     private var messageListenerRegistration: ListenerRegistration? = null
 
     private var leftChatListenerRegistration: ListenerRegistration? = null
@@ -164,33 +167,88 @@ class ChatViewModel @Inject constructor() : ViewModel() {
 
                 if (snapshot != null && !snapshot.isEmpty) {
                     for (document in snapshot.documents) {
+                      val chatRoomId = document.id
+                      val members:List<*>? = (document.get("members") as? List<*>?)
+                      if (members == null) {
+                           continue
+                       }
+                        startHandShakeListener(chatRoomId, members)
+                        makeFireBaseHandShake(chatRoomID = chatRoomId, userID = searchID)
+                        Handler().postDelayed({
+
+                            if (isWaitingForOtherPerson.value) {
+                                addUserToWaitList(userData)
+                            }
+                        }, 2000)
+
+                    }
+
+                } else {
+                    Log.d(TAG, "No active chat rooms found for userId: $userID")
+                }
+            }
+    }
+
+
+
+    fun startHandShakeListener(chatRoomID: String, members: List<*>?, userData: UserData? = null) {
+        val searchID = chatRoomID
+
+        if (searchID.isNullOrBlank()) {
+            Log.w(TAG, "userID null or blank")
+            return
+        }
+        chatRoomHandShakeListenerRegistration?.remove()
+
+        chatRoomHandShakeListenerRegistration = db.collection("chatRoomHandShake")
+            .whereArrayContains("roomID", searchID)
+            .limit(1)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .whereNotEqualTo("userId", userID)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    errorMsg.value = "failed to connect to other person";
+                    Log.e(TAG, "Chat room listen failed: ${error.message}", error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && !snapshot.isEmpty) {
+                    for (document in snapshot.documents) {
                         setIsWaiting(false)
                         errorMsg.value = ""
                         roomID = document.id
                         startMessageListener()
                         startLeftChatListener(userData)
 
-                        val members = document.get("members") as? List<*>
                         Log.d(TAG, "Found chat room: ${document.id}")
                         Log.d(TAG, "Room ${document.id} members: $members")
-                        if (members != null && members.size == 2) {
+                        if (members!!.size == 2) {
                             val other = members.firstOrNull { it != searchID } as? String
                             if (!other.isNullOrBlank()) {
                                 // only initiate call from one side (deterministic)
                                 if (searchID < other) {
-                                    Log.d(TAG, "startChatRoomListener: we are caller, initiating call to $other")
+                                    Log.d(
+                                        TAG,
+                                        "startChatRoomListener: we are caller, initiating call to $other"
+                                    )
                                     repo?.startCall(other)
                                 } else {
-                                    Log.d(TAG, "startChatRoomListener: waiting for offer from $other")
+                                    Log.d(
+                                        TAG,
+                                        "startChatRoomListener: waiting for offer from $other"
+                                    )
                                 }
                             }
                         }
                     }
+
+
                 } else {
                     Log.d(TAG, "No active chat rooms found for userId: $userID")
                 }
             }
     }
+
 
     fun startLeftChatListener(userData: UserData?) {//Starts a listener for collection Leftchat which consists of rooms that have 1 participant
         //If the user is in a room that was added to Leftchat collection they will be added back to the waitlist
@@ -247,6 +305,7 @@ class ChatViewModel @Inject constructor() : ViewModel() {
     }
 
     private lateinit var nsWebRTCClient: NSWebRTCClient
+
     fun addUserToWaitList(userData: UserData?) {//Adds user to the waitlist so we can connect them  with another participant
         val now = System.currentTimeMillis()
         setIsWaiting(true)
@@ -294,6 +353,32 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Failed to remove waitList entry", e)
+            }
+    }
+
+    fun makeFireBaseHandShake(chatRoomID: String, userID: String) {
+        val now = System.currentTimeMillis()
+        setIsWaiting(true)
+        if (now-timeSinceLast<2000) {
+            Log.d(TAG, "WaitList addition skipped. Already started.")
+            return
+        }
+
+        timeSinceLast = now
+
+        val waitListEntry = hashMapOf<String, Any>(
+            "userId" to userID,
+            "roomID" to chatRoomID,
+            "createdAt" to (System.currentTimeMillis())
+
+        )
+
+        db.collection("chatRoomHandShake")
+            .add(waitListEntry)
+            .addOnFailureListener { e ->
+                setIsWaiting(false)
+                errorMsg.value = "failed to connect to the server"
+                Log.w(TAG, "Error establishing connection", e)
             }
     }
     fun addUserToLeftChat(userData: UserData?) {//Adds room to Leftchat collection which consists of the roomID of the room user left from
