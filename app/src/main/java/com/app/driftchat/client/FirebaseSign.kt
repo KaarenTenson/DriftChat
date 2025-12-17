@@ -5,6 +5,8 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import org.webrtc.IceCandidate
 import org.webrtc.SessionDescription
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.ListenerRegistration
 
 class FirebaseSign(
     private val db: FirebaseFirestore,
@@ -12,50 +14,83 @@ class FirebaseSign(
 ) : FirebaseSignaling {
 
     private var lastCaller: String = ""
+    private val MAX_SIGNALING_AGE_MS = 2 * 60 * 1000L // 2 minutes
+    private val seenDocIds = mutableSetOf<String>()
+    private var reg: ListenerRegistration? = null
+
+    override fun sendStartCall(target: String) = sendEvent(target, "StartVideoCall", "")
 
     override fun listenForEvents(onEvent: (SignalingEvent) -> Unit) {
-        Log.d(TAG, "4444444444")
-        db.collection("videoCalls")
-            .whereEqualTo("callee", currentUserId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e(TAG, "Firestore listener error: ${error.message}")
-                    return@addSnapshotListener
-                }
+        reg?.remove()
+        seenDocIds.clear()
 
+        reg = db.collection("videoCalls")
+            .whereEqualTo("callee", currentUserId) // ✅ only events addressed to me
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
 
                 snapshot?.documentChanges?.forEach { change ->
+                    if (change.type != DocumentChange.Type.ADDED) return@forEach
+
+                    val docId = change.document.id
+                    if (!seenDocIds.add(docId)) return@forEach
+
                     val data = change.document.data
-                    val type = data["type"] as? String ?: run {
-                        Log.w(TAG, "listenForEvents: Missing 'type' in document ${change.document.id}")
+                    val ts = (data["timestamp"] as? Long) ?: 0L
+                    val age = System.currentTimeMillis() - ts
+
+                    // ✅ ignore old junk that existed before app opened
+                    if (ts == 0L || age > MAX_SIGNALING_AGE_MS) {
+                        // optional cleanup of old docs
+                        change.document.reference.delete()
                         return@forEach
                     }
+
+                    val type = data["type"] as? String ?: return@forEach
                     val caller = data["caller"] as? String ?: ""
+                    if (caller.isBlank() || caller == currentUserId) return@forEach
+
                     lastCaller = caller
-                    Log.d(TAG, "listenForEvents: Event type=$type from caller=$caller")
 
                     val sdpString = data["sdp"] as? String
-                    val sdp = sdpString?.let {
+                    val sdp = if (!sdpString.isNullOrBlank() && (type == "Offer" || type == "Answer")) {
                         SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(
-                                type
-                            ), it
+                            if (type == "Offer") SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER,
+                            sdpString
                         )
-                    }
+                    } else null
 
-                    val iceCandidateData = data["iceCandidate"] as? Map<String, Any>
-                    val iceCandidate = iceCandidateData?.let {
+                    val iceMap = data["iceCandidate"] as? Map<*, *>
+                    val ice = if (iceMap != null) {
                         IceCandidate(
-                            it["sdpMid"] as String,
-                            (it["sdpMLineIndex"] as Long).toInt(),
-                            it["sdp"] as String
+                            iceMap["sdpMid"] as? String,
+                            (iceMap["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
+                            iceMap["sdp"] as? String ?: ""
                         )
-                    }
+                    } else null
 
-                    onEvent(SignalingEvent(type, caller, sdp, iceCandidate))
+                    onEvent(SignalingEvent(type, caller, sdp, ice))
+
+                    // ✅ OPTIONAL but highly recommended: delete so it never replays again
+                    change.document.reference.delete()
                 }
             }
     }
+    override fun stopListening() {
+        reg?.remove()
+        reg = null
+        seenDocIds.clear()
+    }
+    override fun sendEndCall(target: String) {
+        val data = mapOf(
+            "type" to "EndCall",
+            "caller" to currentUserId,
+            "callee" to target,
+            "timestamp" to System.currentTimeMillis()
+        )
+        db.collection("videoCalls").add(data)
+    }
+
 
     override fun sendOffer(target: String, sdp: String) = sendEvent(target, "Offer", sdp)
     override fun sendAnswer(target: String, sdp: String) = sendEvent(target, "Answer", sdp)

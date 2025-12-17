@@ -49,7 +49,7 @@ class UserDataDaoTest {
             hobbies = setOf("Coding", "Gaming"),
             description = "A test user.",
             gender = Gender.MALE,
-            quote = "Test quote"
+            quote = null,
         )
 
         userDataDao.insertUserData(user)

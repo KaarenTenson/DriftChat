@@ -1,15 +1,20 @@
 package com.app.driftchat.ui.components
 
 import android.content.Context
+import android.util.Log
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.app.driftchat.client.EglBaseProvider
 import org.webrtc.EglBase
 import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
+
 
 @Composable
 fun VideoView(
@@ -17,34 +22,42 @@ fun VideoView(
     videoTrack: VideoTrack?,
     modifier: Modifier = Modifier
 ) {
-    val eglBase = remember { EglBase.create() }
+    val eglBase = remember { EglBaseProvider.eglBase }
+
+    // FIX: Use explicit state object
+    val attachedTrack = remember { mutableStateOf<VideoTrack?>(null) }
+
+    val renderer = remember { SurfaceViewRenderer(context) }
 
     AndroidView(
         modifier = modifier,
-        factory = { ctx ->
-            SurfaceViewRenderer(ctx).apply {
+        factory = {
+            renderer.apply {
                 init(eglBase.eglBaseContext, null)
+                setEnableHardwareScaler(true)
                 setMirror(true)
-                post { videoTrack?.addSink(this) }
             }
         },
         update = { view ->
-            // Handle track changes
-            view.clearImage()
-            videoTrack?.addSink(view)
+
+            // Detach old track
+            if (attachedTrack.value != null && attachedTrack.value !== videoTrack) {
+                attachedTrack.value?.removeSink(view)
+            }
+
+            // Attach new track
+            videoTrack?.let { track ->
+                track.setEnabled(true)
+                track.addSink(view)
+                attachedTrack.value = track
+            }
         }
     )
 
-    DisposableEffect(videoTrack) {
-        onDispose {
-            videoTrack?.removeSink(null)
-        }
-    }
-
     DisposableEffect(Unit) {
         onDispose {
-            eglBase.release()
+            attachedTrack.value?.removeSink(renderer)
+            renderer.release()
         }
     }
 }
-
